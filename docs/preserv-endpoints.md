@@ -2,7 +2,7 @@
 
 Official recording of [data provenance](https://en.wikipedia.org/wiki/Provenance#Data_provenance) and access to original donated files.
 
-![](assets/umlClass-preserv1.png)
+![](assets/umlClass-preserv01.png)
 
 Below, the [*endpoints*](https://en.wikipedia.org/wiki/Endpoint_interface) expressed as [URI Templates](https://en.wikipedia.org/wiki/URI_Template).
 

@@ -4,8 +4,12 @@ Below, the [*endpoints*](https://en.wikipedia.org/wiki/Endpoint_interface) expre
 
 _endpoint_ (URI template) |  Descrição
 ------------------------|-----------------
-`api.osm.codes/{geocode}` | devolve JSON de geocódigos de jurisdição, tais como países, estados, e hierarquia pais-estado-municipio onde dispor. No caso particular de Cabo Verde e irlanda pode redirecionar para respectivo resolver.
-`olc.osm.codes/{olc_complete}` |  resolve código OLC e reenvia para OSM.org com o ponto, ou para map.osm.codes com o polígono.
-`ghs.osm.codes/{geohash_complete}`  | resolve código Geohash e reenvia para OSM.org com o ponto, ou para map.osm.codes com o polígono
-`postal.osm.codes/{country_postal_code}`  | resolve código ISO da jurisdição (country code) e reenvia para resolvedor oficial de postal codes do país, quando existi serviço por GET, senão precisa usar endpoint complementar.
+`api.osm.codes/{geocode}` | returns JSON of jurisdictional geocodes, such as countries, states, and country-state-municipality hierarchy (when exists). In case of official resolution, redirects to it (see cases of Cape Verde and Ireland).
+`olc.osm.codes/{olc_complete}` |  resolves OLC code and resends it to `OSM.org` with a point, or to `map.osm.codes` with a polygon.
+`ghs.osm.codes/{geohash_complete}`  | resolves Geohash code and resends it to `OSM.org` with the point, or to `map.osm.codes` with the polygon
+`postal.osm.codes/{country_postal_code}`  | resolves the jurisdiction's ISO code (country code) and resends it to the country's official postal code resolver.
 `postal.osm.codes/{country}/{postal_code}`  | resolve código ISO da jurisdição (country code) e resolve localmente o postalcode (por exemplo no Brasil com a base do CEP). Alternativamente `country~x`  resolve código publico alternativo, tal como [CRP](https://github.com/AddressForAll/CRP).
+
+<!--
+resolves the jurisdiction's ISO code (country code) and resolves the postalcode locally (for example in Brazil with the CEP base). Alternatively country ~ x resolves alternative public code, such as CRP.
+-->
