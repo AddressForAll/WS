@@ -48,7 +48,7 @@ dkr_04s_main: docker-compose.yml
 ecl_igorFiles: ecl_igorFiles_step1_hashes ecl_igorFiles_step2_copy
 
 ecl_igorFiles_step1_hashes:
-  psql "postgres://postgres@localhost/dl03t_main" -c "select eclusa.cityfolder_runhashes('/home/igor')"
+	psql "postgres://postgres@localhost/dl03t_main" -c "select eclusa.cityfolder_runhashes('/home/igor')"
 	sh /tmp/pg_io/runHashes.sh
 
 ecl_igorFiles_step2_copy:
@@ -61,7 +61,7 @@ ecl_igorFiles_step2_copy:
 ecl_enioFiles: ecl_enioFiles_step1_hashes ecl_enioFiles_step2_copy
 
 ecl_enioFiles_step1_hashes:
-  psql "postgres://postgres@localhost/dl03t_main" -c "select eclusa.cityfolder_runhashes('/home/enio')"
+	psql "postgres://postgres@localhost/dl03t_main" -c "select eclusa.cityfolder_runhashes('/home/enio')"
 	sh /tmp/pg_io/runHashes.sh
 
 ecl_enioFiles_step2_copy:
