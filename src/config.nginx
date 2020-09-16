@@ -1,0 +1,153 @@
+##
+# Portal and Web Services AddressForAll
+##
+
+
+server {
+        server_name preserv.addressforall.org;
+        root /var/www/preserv.addressforall.org/;
+        index  index.php index.html index.htm;
+        access_log /var/log/nginx/addressforall.org.access_log;
+
+    # JSON SQL & RPC:
+    location /_sql.csv/ {
+      proxy_set_header Accept 'text/csv';
+      proxy_pass http://localhost:3104/;
+    }
+    location /_sql.json/ {
+      proxy_pass http://localhost:3104/;
+    }
+    location /_sql/ {
+      proxy_pass http://localhost:3104/;
+    }
+
+    location / {
+      try_files $uri $uri/  /index.php?uri=$uri;
+    }
+    location ~ \.php$ {
+          include snippets/fastcgi-php.conf;
+          fastcgi_pass unix:/run/php/php7.4-fpm.sock;
+    }
+} # \server
+
+
+server {
+        server_name git.addressforall.org;
+
+        location ~ ^/?.+ {
+                rewrite
+                  ^/?licenses(/.*$|$)
+                  /ppKrauss/licenses/$1
+                  break;
+                rewrite
+                  ^/?(.*)$
+                  /AddressForAll/$1
+                  break;
+
+                proxy_pass http://github.com;
+        }
+} #end server
+
+
+server {
+        server_name api.addressforall.org;
+        access_log /var/log/nginx/addressforall.org.access_log;
+        root /var/www/addressforall.org/;
+        index  index.php index.html index.htm;
+
+    # JSON SQL & RPC:
+    location /_sql.csv/ {
+      proxy_set_header Accept 'text/csv';
+      proxy_pass http://localhost:3104/;
+    }
+    location /_sql.json/ {
+      proxy_pass http://localhost:3104/;
+    }
+    location /_sql/ {
+      proxy_pass http://localhost:3104/;
+    }
+
+    # outros: aprimorar para que seja apenas uma função, parametrizavel com texts
+
+    location ~ /v1(?:\.json)?/eclusa/checkUserFiles-step1/([a-zA-Z0-9_]+)/?(0|1|true|false)? {
+      proxy_pass http://localhost:3104/rpc/cityfolder_input_files_user?p_user=$1&p_is_valid=$2;
+    }
+    location ~ /v1(?:\.json)?/eclusa/checkUserFiles-step2/([a-zA-Z0-9_]+)/?(0|1|true|false)? {
+      proxy_pass http://localhost:3104/rpc/cityfolder_input_user?p_user=$1&p_is_valid=$2;
+    }
+} # \server
+
+server {
+    server_name api-test.addressforall.org;
+    access_log /var/log/nginx/addressforall.org.access_log;
+    root /var/www/addressforall.org/;
+    index  index.php index.html index.htm;
+
+    # JSON SQL & RPC:
+    location /_sql.csv/ {
+      proxy_set_header Accept 'text/csv';
+      proxy_pass http://localhost:3103/;
+    }
+    location /_sql.json/ {
+      proxy_pass http://localhost:3103/;
+    }
+    location /_sql/ {
+      proxy_pass http://localhost:3103/;
+    }
+
+    # Others:
+    location ~ /v1(?:\.json)?/eclusa/checkUserFiles-step1/([a-zA-Z0-9_]+)/?(0|1|true|false)? {
+      proxy_pass http://localhost:3103/rpc/cityfolder_input_files_user?p_user=$1&p_is_valid=$2;
+    }
+    location ~ /v1(?:\.json)?/eclusa/checkUserFiles-step2/([a-zA-Z0-9_]+)/?(0|1|true|false)? {
+      proxy_pass http://localhost:3103/rpc/cityfolder_input_user?p_user=$1&p_is_valid=$2;
+    }
+} # \server
+
+
+
+server {
+        server_name api-htm.addressforall.org;
+        access_log /var/log/nginx/addressforall.org.access_log;
+        root /var/www/addressforall.org/;
+        index  index.php index.html index.htm;
+
+    location / {
+      try_files $uri $uri/  /index.php?uri=$uri;
+    }
+
+    location ~ \.php$ {
+          include snippets/fastcgi-php.conf;
+          fastcgi_pass unix:/run/php/php7.4-fpm.sock;
+    }
+
+} # \server
+
+server {
+        server_name addressforall.org addressforall.com www.addressforall.org;
+        access_log /var/log/nginx/addressforall.org.access_log;
+        root /var/www/addressforall.org/;
+        index  index.php index.html index.htm;
+
+    # JSON SQL & RPC:
+    location /_sql.csv/ {
+      proxy_set_header Accept 'text/csv';
+      proxy_pass http://localhost:3104/;
+    }
+    location /_sql.json/ {
+      proxy_pass http://localhost:3104/;
+    }
+    location /_sql/ {
+      proxy_pass http://localhost:3104/;
+    }
+
+    location / {
+      try_files $uri $uri/  /index.php?uri=$uri;
+    }
+
+    location ~ \.php$ {
+          include snippets/fastcgi-php.conf;
+          fastcgi_pass unix:/run/php/php7.4-fpm.sock;
+    }
+} #end server
+
