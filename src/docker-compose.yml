@@ -1,0 +1,27 @@
+version: "3"
+services:
+  pgrestDL03:
+    image: postgrest/postgrest
+    restart: unless-stopped
+    ports:
+      - "3103:3103"
+    network_mode: host
+    environment:
+      - RACK_ENV=development
+      - PGRST_DB_URI=postgres://postgres@localhost/dl03t_main
+      - PGRST_DB_ANON_ROLE=postgres
+      - PGRST_DB_SCHEMA=api 
+      - PGRST_SERVER_PORT=3103
+  pgrestDL04:
+    image: postgrest/postgrest
+    restart: unless-stopped
+    ports:
+      - "3104:3104"
+    network_mode: host
+    environment:
+      - RACK_ENV=production
+      - PGRST_DB_URI=postgres://postgres@localhost/dl04s_main
+      - PGRST_DB_ANON_ROLE=postgres
+      - PGRST_DB_SCHEMA=api
+      - PGRST_SERVER_PORT=3104
+
