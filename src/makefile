@@ -14,18 +14,18 @@ ini_database_list_tmp:
 	mkdir -p /tmp/pg_io
 	psql -lqt | cut -d \| -f 1 > /tmp/pg_io/database_list_tmp.txt
 
-
-ini_step1: ini_database_list_tmp  make-step1.~feito
+ini_step1: ini_database_list_tmp
 	bash make-step1.sh
-	touch make-step1.~feito
+	touch /opt/lock-mkStatus/WS-makeStep01.~feito
 
-ini_step2: ini_step1
+ini_step2: ini_step1 /opt/lock-mkStatus/WS-makeStep01.~feito
 	psql dl03t_main -c "CREATE SCHEMA IF NOT EXISTS Optim"
 	psql dl03t_main -c $(iniExts)
 	psql ingest1    -c $(iniExts)
 	psql ingest2    -c $(iniExts)
+	touch /opt/lock-mkStatus/WS-makeStep02.~feito
 
-ini_step3_optim: ini_step4_terms
+ini_step3_optim: ini_step4_terms /opt/lock-mkStatus/WS-makeStep02.~feito
 	@echo "Creating optim schema and its libs at DL03t_main database"
 	psql dl03t_main < ./optim-step1-ini.sql
 
@@ -35,7 +35,7 @@ ini_step4_terms: /opt/gits/sql-term/makefile
 ini_step6_pgrestUp: dkr_03t_main dkr_04s_main
 	@echo "PostgREST Dockers up"
 
-## DOCKERS:
+## DOCKER RULES:
 
 dkr_03t_main: docker-compose.yml
 	docker-compose  up -d  pgrestDL03
@@ -43,32 +43,14 @@ dkr_03t_main: docker-compose.yml
 dkr_04s_main: docker-compose.yml
 	docker-compose  up -d  pgrestDL04
 
+dkr_refresh: dkr_refresh_dl03 dkr_refresh_dl04
+	@echo "PostgREST functio-return structures refreshed"
 
-## ECLUSA do Igor, comandos usualmente executados pelo root no crontab:
-ecl_igorFiles: ecl_igorFiles_step1_hashes ecl_igorFiles_step2_copy
+dkr_refresh_dl03: /opt/gits/WS/src/docker-compose.yml
+	docker-compose -f /opt/gits/WS/src/docker-compose.yml kill -s SIGUSR1 pgrestDL03
 
-ecl_igorFiles_step1_hashes:
-	psql "postgres://postgres@localhost/dl03t_main" -c "select eclusa.cityfolder_runhashes('/home/igor')"
-	sh /tmp/pg_io/runHashes.sh
-
-ecl_igorFiles_step2_copy:
-	psql "postgres://postgres@localhost/dl03t_main" -c "select eclusa.cityfolder_run_cpfiles('igor')"
-	sh /tmp/pg_io/runCpFiles.sh
-
-#falta ecl_enioFiles_step3_insert: conclue o proceso de insert dos casos válidos de pré-preservação
-
-## ECLUSA do ENIO, comandos usualmente executados pelo root no crontab:
-ecl_enioFiles: ecl_enioFiles_step1_hashes ecl_enioFiles_step2_copy
-
-ecl_enioFiles_step1_hashes:
-	psql "postgres://postgres@localhost/dl03t_main" -c "select eclusa.cityfolder_runhashes('/home/enio')"
-	sh /tmp/pg_io/runHashes.sh
-
-ecl_enioFiles_step2_copy:
-	psql "postgres://postgres@localhost/dl03t_main" -c "select eclusa.cityfolder_run_cpfiles('enio')"
-	sh /tmp/pg_io/runCpFiles.sh
-
-#falta ecl_enioFiles_step3_insert: conclue o proceso de insert dos casos válidos de pré-preservação
+dkr_refresh_dl04: /opt/gits/WS/src/docker-compose.yml
+	docker-compose -f /opt/gits/WS/src/docker-compose.yml kill -s SIGUSR1 pgrestDL04
 
 ## clean all? or by prefix ini_clean, etc.?
 clean:
