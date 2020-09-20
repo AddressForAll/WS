@@ -67,13 +67,13 @@ server {
       proxy_pass http://localhost:3104/;
     }
 
-    # outros: aprimorar para que seja apenas uma função, parametrizavel com texts
-
-    location ~ /v1(?:\.json)?/eclusa/checkUserFiles-step1/([a-zA-Z0-9_]+)/?(0|1|true|false)? {
-      proxy_pass http://localhost:3104/rpc/cityfolder_input_files_user?p_user=$1&p_is_valid=$2;
+    # API /v1{outputFormat}/{module}/{function}/{parameters}
+    location ~ /v1(?:\.json)?/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)/(.+) {
+      proxy_pass http://localhost:3103/rpc/uridisp_$1_$2?p_uri=$3&$args;
     }
-    location ~ /v1(?:\.json)?/eclusa/checkUserFiles-step2/([a-zA-Z0-9_]+)/?(0|1|true|false)? {
-      proxy_pass http://localhost:3104/rpc/cityfolder_input_user?p_user=$1&p_is_valid=$2;
+    location ~ /v1\.csv/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)/(.+) {
+      proxy_set_header Accept 'text/csv';
+      proxy_pass http://localhost:3103/rpc/uridisp_$1_$2?p_uri=$3&$args;
     }
 } # \server
 
