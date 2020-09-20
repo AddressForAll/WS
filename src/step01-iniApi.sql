@@ -1,3 +1,4 @@
+CREATE SCHEMA IF NOT EXISTS api;
 
 -- -- -- -- -- -- -- --
 -- API TABLE TEMPLATEs. Definições globais, com origem em diversos projetos.
@@ -60,7 +61,7 @@ CREATE or replace FUNCTION API.uri_dispatch_parser(
   SELECT CASE WHEN valid_prefix AND p_len>=prefix_len THEN p[prefix_len+1:] ELSE NULL END
   FROM topt
 $f$ language SQL immutable;
-COMMENT ON FUNCTION API.uri_dispatch_tab_eclusa1
+COMMENT ON FUNCTION API.uri_dispatch_parser
   IS 'A uri_dispatcher_x() parser, returning NULL or standard strings of the endpont call.'
 ; -- e.g. select API.uri_dispatch_parser('/eclusa/checkUserFiles-step1/igor/0', '{eclusa,checkuserfiles-step1}');
 

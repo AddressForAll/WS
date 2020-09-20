@@ -14,7 +14,7 @@ WITH OWNER = postgres\
 ALTER database template1 is_template=true;\
 "
 
-arr=("DL03t_main" "DL04s_main" "DL05_api" "DL01t_osm" "DL02s_osm" "ingest1" "ingest2" "sandbox")
+arr=("DL03t_main" "DL04s_main" "DL01t_osm" "DL02s_osm" "ingest1" "ingest2" "sandbox")
 for db in "${arr[@]}"
 do
   echo "-- $db:"

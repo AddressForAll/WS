@@ -8,7 +8,7 @@ iniExts  = "CREATE EXTENSION IF NOT EXISTS hstore; CREATE EXTENSION IF NOT EXIST
 
 ## -- -- RULES -- --
 
-ini_all: ini_database_list_tmp ini_step1 ini_step2 ini_step3_optim clean
+ini_all: ini_database_list_tmp ini_step1 ini_step2 ini_step3_api ini_step4_optim clean
 
 ini_database_list_tmp:
 	mkdir -p /tmp/pg_io
@@ -25,12 +25,15 @@ ini_step2: ini_step1 /opt/lock-mkStatus/WS-makeStep01.~feito
 	psql ingest2    -c $(iniExts)
 	touch /opt/lock-mkStatus/WS-makeStep02.~feito
 
-ini_step3_optim: ini_step4_terms /opt/lock-mkStatus/WS-makeStep02.~feito
-	@echo "Creating optim schema and its libs at DL03t_main database"
-	psql dl03t_main < ./optim-step1-ini.sql
+ini_step3_api: /opt/lock-mkStatus/WS-makeStep02.~feito
+	psql dl03t_main < step01-iniApi.sql
 
-ini_step4_terms: /opt/gits/sql-term/makefile
-	@echo "se nao tem /opt/gits/sql-term precisa criar, senao git pull do sql-term"
+ini_step4_optim: ini_step4_terms /opt/lock-mkStatus/WS-makeStep02.~feito
+	@echo "Creating optim schema and its libs at DL03t_main database"
+	#psql dl03t_main < ./optim-step1-ini.sql
+
+ini_step5_terms: /opt/gits/sql-term/makefile
+	@echo "se nao tem /opt/gits/sql-term precisa criar, senao git pull do sql-term. Execute o make."
 
 ini_step6_pgrestUp: dkr_03t_main dkr_04s_main
 	@echo "PostgREST Dockers up"
@@ -80,5 +83,3 @@ status_schProd:
 	psql dl02s_osm  -c "\dn"
 	@echo "-- MAIN stable database DL04s_main:"
 	psql dl04s_main -c "\dn"
-	@echo "-- API database DL05_api:"
-	psql dl05_api   -c "\dn"
