@@ -8,14 +8,15 @@ iniExts  = "CREATE EXTENSION IF NOT EXISTS hstore; CREATE EXTENSION IF NOT EXIST
 
 ## -- -- RULES -- --
 
-ini_all: ini_database_list_tmp ini_step1 ini_step2 ini_step3_api ini_step4_optim clean
+ini_all: ini_database_list_tmp ini_step1 ini_step2 ini_step3_api ini_step4_optim optim_step1 clean
 
 ini_database_list_tmp:
 	mkdir -p /tmp/pg_io
 	psql -lqt | cut -d \| -f 1 > /tmp/pg_io/database_list_tmp.txt
 
 ini_step1: ini_database_list_tmp
-	bash make-step1.sh
+	rm /opt/lock-mkStatus/*~feito
+	bash mk-ini_step1.sh
 	touch /opt/lock-mkStatus/WS-makeStep01.~feito
 
 ini_step2: ini_step1 /opt/lock-mkStatus/WS-makeStep01.~feito
@@ -37,6 +38,14 @@ ini_step5_terms: /opt/gits/sql-term/makefile
 
 ini_step6_pgrestUp: dkr_03t_main dkr_04s_main
 	@echo "PostgREST Dockers up"
+
+## Optim core:
+
+optim_step1: optim-step1-ini.sql /opt/lock-mkStatus/WS-makeStep02.~feito
+	@echo "Schema optim, core initialization"
+	psql dl03t_main < optim-step1-ini.sql
+	sh tmp/pg_io/run_wgets.sh
+	psql dl03t_main < optim-step2-ins.sql
 
 ## DOCKER RULES:
 

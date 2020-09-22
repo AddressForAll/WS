@@ -48,6 +48,21 @@ server {
         }
 } #end server
 
+server {
+        server_name git-raw.addressforall.org;
+
+        location ~ ^/?.+ {
+                rewrite
+                  ^/?licenses(/.*$|$)
+                  /ppKrauss/licenses/$1
+                  break;
+                rewrite
+                  ^/?(.*)$
+                  /AddressForAll/$1
+                  break;
+                proxy_pass https://raw.githubusercontent.com;
+        }
+} #end server
 
 server {
         server_name api.addressforall.org;
@@ -150,4 +165,3 @@ server {
           fastcgi_pass unix:/run/php/php7.4-fpm.sock;
     }
 } #end server
-

@@ -1,4 +1,4 @@
-
+# run for makefile the ini_step1. CREATE all official databases.
 # Template para a criação de bases em Portugues do Brasil:
 psql -c "\
 ALTER database template1 is_template=false;\
@@ -24,4 +24,3 @@ do
       psql -c "CREATE DATABASE $db"
   fi
 done
-
