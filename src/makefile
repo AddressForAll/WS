@@ -42,9 +42,9 @@ ini_step6_pgrestUp: dkr_03t_main dkr_04s_main
 ## Optim core:
 
 optim_step1: optim-step1-ini.sql /opt/lock-mkStatus/WS-makeStep02.~feito
-	@echo "Schema optim, core initialization"
+	@echo "Schema optim, core initialization (só roda com usuário sudo -u postgres)"
 	psql dl03t_main < optim-step1-ini.sql
-	sh tmp/pg_io/run_wgets.sh
+	sh /tmp/pg_io/run_wgets.sh
 	psql dl03t_main < optim-step2-ins.sql
 
 ## DOCKER RULES:

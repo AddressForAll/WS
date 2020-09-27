@@ -10,15 +10,24 @@ CREATE TABLE api.ttpl_general01_namecheck(
   IS 'Standard check-names structure. Ref. eclusa.cityfolder_validUsers().'
 ;
 
-CREATE TABLE api.ttpl_eclusa01_cityfile1 (
-  cityname text,      ctype text,          fid int,
+CREATE TABLE api.ttpl_eclusa01_packdir(
+  username text, jurisdiction_label text,
+  jurisdiction_osmid bigint, pack_path text, pack_id int
+  ,UNIQUE(pack_id)
+  ,UNIQUE(pack_path)
+); COMMENT ON TABLE api.ttpl_general01_namecheck
+  IS 'Standard pack path structure. Ref. eclusa.cityfolder_input_packdir().'
+;
+
+CREATE TABLE api.ttpl_eclusa02_cityfile1 (
+  pack_id int,        ctype text,          fid int,
   fname text,         is_valid boolean,    fmeta JSONb
   ,UNIQUE(fid)
-  ,UNIQUE(cityname,ctype,fname)
-); COMMENT ON TABLE api.ttpl_eclusa01_cityfile1
+  ,UNIQUE(pack_id,ctype,fname)
+); COMMENT ON TABLE api.ttpl_eclusa02_cityfile1
   IS 'List filenames. Ref. eclusa.cityfolder_input_files_user().'
 ;
-INSERT INTO  api.ttpl_eclusa01_cityfile1 VALUES
+INSERT INTO  api.ttpl_eclusa02_cityfile1 VALUES
   (NULL, NULL, NULL, NULL, NULL,
    '{"dispatching_errcod":-1,"dispatching_errmsg":"empty endpoint, use e.g. /eclusa/$other_eclusa_parts"}'::jsonb
   ),
@@ -30,13 +39,13 @@ INSERT INTO  api.ttpl_eclusa01_cityfile1 VALUES
   )
 ;
 -- ttpl_eclusa02_cityfile2 in use?
-CREATE TABLE api.ttpl_eclusa02_cityfile2 (LIKE api.ttpl_eclusa01_cityfile1 INCLUDING ALL);
-ALTER TABLE api.ttpl_eclusa02_cityfile2 ADD  hash text, ADD err_msg text;
-COMMENT ON TABLE api.ttpl_eclusa02_cityfile2
+CREATE TABLE api.ttpl_eclusa03_cityfile2 (LIKE api.ttpl_eclusa02_cityfile1 INCLUDING ALL);
+ALTER TABLE api.ttpl_eclusa03_cityfile2 ADD  hash text, ADD err_msg text;
+COMMENT ON TABLE api.ttpl_eclusa03_cityfile2
   IS 'List filenames and its hashes. Ref. eclusa.??().'
 ;
 
-CREATE TABLE api.ttpl_eclusa03_hash ( -- IN USE??
+CREATE TABLE api.ttpl_eclusa04_hash ( -- IN USE??
   hash text, hashtype text, fname text, refpath text
 );
 
@@ -98,7 +107,7 @@ COMMENT ON FUNCTION API.uri_dispatcher_scalar
 CREATE or replace FUNCTION API.uri_dispatch_tab_eclusa1(
     uri text DEFAULT '', -- /eclusa/checkUserFiles-step1/{user}/{is_valid}?
     args text DEFAULT NULL
-) RETURNS TABLE (LIKE api.ttpl_eclusa01_cityfile1) AS $f$
+) RETURNS TABLE (LIKE api.ttpl_eclusa02_cityfile1) AS $f$
   WITH topt AS (
     SELECT CASE
       WHEN p_len=1 AND p[1]='eclusa' THEN -2 -- incomplete
@@ -128,7 +137,7 @@ CREATE or replace FUNCTION API.uri_dispatch_tab_eclusa1(
               AND COALESCE( is_valid=p_is_valid, true)
         ORDER BY 1,2
       ) UNION ALL -- OPT<0, error message:
-        SELECT a.* from topt, api.ttpl_eclusa01_cityfile1 a
+        SELECT a.* from topt, api.ttpl_eclusa02_cityfile1 a
         WHERE topt.opt < 0 AND fmeta->'dispatching_errcod' = to_jsonb(topt.opt)
 $f$ language SQL immutable;
 COMMENT ON FUNCTION API.uri_dispatch_tab_eclusa1
@@ -139,7 +148,7 @@ COMMENT ON FUNCTION API.uri_dispatch_tab_eclusa1
 CREATE or replace FUNCTION API.uri_dispatch_tab_eclusa2(
     uri text DEFAULT '',
     args text DEFAULT NULL
-) RETURNS api.ttpl_eclusa02_cityfile2 AS $f$
+) RETURNS api.ttpl_eclusa03_cityfile2 AS $f$
   -- etc
 $f$ language SQL immutable;
 COMMENT ON FUNCTION API.uri_dispatch_tab_eclusa2
