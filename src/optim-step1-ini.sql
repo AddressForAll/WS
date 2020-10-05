@@ -145,6 +145,31 @@ CREATE TABLE IF NOT EXISTS optim.origin(
    ,UNIQUE(jurisd_osm_id,fname,fversion,ctype) -- ,kx_ingest_date=ingest_instant::date
 );
 
+CREATE VIEW optim.vw01_origin AS
+  SELECT o.*,
+         j.name as jurisd_name,         j.parent_abbrev as jurisd_state,
+         j.abbrev AS jurisd_abbrev3,    j.isolabel_ext AS jurisd_isolabel_ext,
+         p.donor_id, p.user_resp,
+         d.vat_id AS donor_vat_id,     d.shortname AS donor_shortname,
+         d.legalName AS donor_legalName, d.url AS donor_url,
+         p.accepted_date,              p.config_commom,
+         ct.id AS ctype_id, ct.model_geo AS ctype_model_geo
+  FROM (optim.origin o
+       INNER JOIN optim.jurisdiction j         ON o.jurisd_osm_id=j.osm_id
+       INNER JOIN optim.origin_content_type ct ON o.ctype=ct.label
+       INNER JOIN optim.donatedPack p          ON o.pack_id=p.pack_id
+     ) INNER JOIN optim.donor d ON p.donor_id = d.id
+;
+
+CREATE VIEW optim.vw_source AS -- ORIGIN+donatedPack
+  SELECT id, pack_id, donor_id, user_resp, accepted_date, jurisd_isolabel_ext
+  FROM optim.vw01_origin
+  UNION
+  SELECT -pack_id, pack_id, donor_id,user_resp, accepted_date, escopo
+  FROM optim.donatedPack
+  -- WHERE pack_id IN (select pack_id, count(*) from optim.origin group by 1 having count(*)>1)
+;
+
 /*
 CREATE VIEW optim.vw01_origin AS
   -- REVISAR com novos campos jurisdiction
