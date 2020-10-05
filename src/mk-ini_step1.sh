@@ -13,6 +13,7 @@ WITH OWNER = postgres\
    TEMPLATE template0;\
 ALTER database template1 is_template=true;\
 "
+# -- ERROR:  DROP DATABASE cannot run inside a transaction block
 
 arr=("DL03t_main" "DL04s_main" "DL01t_osm" "DL02s_osm" "ingest1" "ingest2" "sandbox")
 for db in "${arr[@]}"

@@ -77,7 +77,7 @@ CREATE TABLE optim.origin_content_type(
   label text,
   model_geo text,      -- tipo de geometria e seus atributos
   model_septable text, -- atributos da geometria em tabela separada
-  is_useful text,      -- valido se true
+  is_useful boolean,      -- valido se true
   score text           -- avaliação de preferência
   ,UNIQUE(label)
 );
@@ -96,8 +96,35 @@ INSERT INTO optim.origin_content_type VALUES
   (12,'L3','Lot','',FALSE,'bad'),
   (13,'N1s','(null)','via_name housenumber region',FALSE,'bad'),
   (14,'V1','Via name','',TRUE,'perfect'),
-  (15,'V1s','Via id','id name',TRUE,'good')
+  (15,'V1s','Via id','id name',TRUE,'good'),
+  (101,'edificacoes','?','?',null,'bad'),
+  (102,'lotes','?','?',null,'bad'),
+  (103,'ruas','?','?',null,'bad'),
+  (104,'eixos','?','?',null,'bad')
 ;
+/*
+-- id=100 em diante, ver select distinct ctype from eclusa.cityfolder_input('igor') order by 1;
+cad
+ data
+ dwg
+ edificacoes
+ eixos
+ enderecos
+ equipamentos
+ equipamentos_ponto
+ gdb
+ hidrografia
+ lotes
+ lotes_ponto
+ meio_fio
+ patrimonio
+ pdf
+ posteacao
+ quadras
+ std
+ territorios
+ vegetacao
+*/
 
 CREATE TABLE IF NOT EXISTS optim.origin(
    id serial           NOT NULL PRIMARY KEY,
@@ -118,6 +145,7 @@ CREATE TABLE IF NOT EXISTS optim.origin(
    ,UNIQUE(jurisd_osm_id,fname,fversion,ctype) -- ,kx_ingest_date=ingest_instant::date
 );
 
+/*
 CREATE VIEW optim.vw01_origin AS
   -- REVISAR com novos campos jurisdiction
   SELECT o.*,
@@ -131,6 +159,7 @@ CREATE VIEW optim.vw01_origin AS
        LEFT JOIN optim.donatedPack p ON o.pack_id=p.pack_id
      ) LEFT JOIN optim.donor d ON p.donor_id = d.id
 ;
+*/
 
 -- -- --
 -- SQL and bash generators (optim-ingest submodule)
@@ -187,12 +216,6 @@ COMMENT ON FUNCTION optim.fdw_generate_getclone
 ;
 
 CREATE or replace FUNCTION optim.fdw_wgets_script(
-  p_subset text DEFAULT '', -- empty is all.
-  p_output_shfile text DEFAULT '/tmp/pg_io/run_wgets'
-) RETURNS text AS $f$
-
-
-CREATE or replace FUNCTION optim.fdw_wgets_script(
    p_subset text DEFAULT '', -- ''='all' and 'refresh'.
    p_output_shfile text DEFAULT '/tmp/pg_io/run_wgets'
 ) RETURNS text AS $f$
@@ -221,9 +244,13 @@ CREATE or replace FUNCTION optim.fdw_wgets_script(
       ORDER BY g
      ) t3
    ) -- \t2
-   SELECT 'Gravados '
+   SELECT COALESCE(
+          'Gravados '
           || pg_catalog.pg_file_write(output_shfile,t2.cmds,false)::text
-          ||' bytes em '|| output_shfile ||E' \n' as fim
+          ||' bytes em '|| output_shfile ||E' \n'
+          ,E'ERRO, algo NULL em optim.fdw_wgets_script() \n'
+          ||concat('output_shfile=',output_shfile IS NULL,' t2.cmds=',t2.cmds IS NULL)
+        ) as fim
    FROM t2, (SELECT p_output_shfile||'-'||s||'.sh' FROM t0) t4(output_shfile);
 $f$ language SQL immutable;
 

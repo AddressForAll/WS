@@ -43,8 +43,10 @@ ini_step6_pgrestUp: dkr_03t_main dkr_04s_main
 
 optim_step1: optim-step1-ini.sql /opt/lock-mkStatus/WS-makeStep02.~feito
 	@echo "Schema optim, core initialization (só roda com usuário sudo -u postgres)"
+	psql dl03t_main < pubLib.sql
 	psql dl03t_main < optim-step1-ini.sql
-	sh /tmp/pg_io/run_wgets.sh
+	# bug pois só roda via "sudo su postgres"
+	sh /tmp/pg_io/run_wgets-all.sh
 	psql dl03t_main < optim-step2-ins.sql
 
 ## DOCKER RULES:
