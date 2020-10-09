@@ -43,12 +43,12 @@ CREATE TABLE IF NOT EXISTS optim.jurisdiction ( -- only current
 CREATE TABLE optim.donor (
   id serial NOT NULL primary key,
   scope text, -- city code or country code
-  vat_id text,
-  shortname text,
-  legalName text NOT NULL,
-  wikidata_id bigint,
-  url text,
-  info JSONb,
+  shortname text, -- abreviation or acronym
+  vat_id text,    -- in the Brazilian case is "CNPJ:number"
+  legalName text NOT NULL, -- in the Brazilian case is Razao Social
+  wikidata_id bigint,  -- without "Q" prefix
+  url text,     -- official home page of the organization
+  info JSONb,   -- all other information using controlled keys
   UNIQUE(vat_id),
   UNIQUE(scope,legalName)
 );
@@ -241,36 +241,38 @@ COMMENT ON FUNCTION optim.fdw_generate_getclone
 ;
 
 CREATE or replace FUNCTION optim.fdw_wgets_script(
+   -- first step is to wget
    p_subset text DEFAULT '', -- ''='all' and 'refresh'.
    p_output_shfile text DEFAULT '/tmp/pg_io/run_wgets'
+   -- p_remove_all_csv true.
 ) RETURNS text AS $f$
   -- gambiarra temporária, depois que tomar forma criar tabelas e gerador automatico;
-  -- old SELECT pg_catalog.pg_file_unlink(p_output_shfile);
   WITH
    t0 AS (SELECT CASE WHEN p_subset='' OR p_subset is null THEN 'all' ELSE lower(p_subset) END as s)
    ,t1 AS (
      SELECT '001' as g,'mkdir -p /tmp/pg_io/digital-preservation-XX' as cmd
      UNION ALL
-     SELECT '002', 'rm -f "/tmp/pg_io/digital-preservation-XX/"*'|| iIF(s='all','','-'||s) ||'.csv'  FROM t0
+     SELECT '002', 'rm -f "/tmp/pg_io/digital-preservation-XX/"*'|| iIF(s='all','','-'||s) ||'.csv' FROM t0
      UNION ALL
-     SELECT 'all', 'wget -P /tmp/pg_io/digital-preservation-XX/  https://raw.githubusercontent.com/datasets-br/state-codes/master/data/br-region-codes.csv'
+     SELECT 'all', 'wget -P /tmp/pg_io/digital-preservation-XX/ -N https://raw.githubusercontent.com/datasets-br/state-codes/master/data/br-region-codes.csv'
      UNION ALL
-     SELECT 'all', 'wget -P /tmp/pg_io/digital-preservation-XX/  http://git-raw.addressforall.org/digital-preservartion-BR/master/data/br-jurisdiction.csv'
+     SELECT 'refresh', 'wget -P /tmp/pg_io/digital-preservation-XX/ -N http://git-raw.addressforall.org/digital-preservation-BR/master/data/in/br-jurisdiction.csv'
      UNION ALL
-     SELECT 'refresh', 'wget -P /tmp/pg_io/digital-preservation-XX/  http://git-raw.addressforall.org/digital-preservartion-BR/master/data/br-donatedPack.csv'
+     SELECT 'refresh', 'wget -P /tmp/pg_io/digital-preservation-XX/ -N http://git-raw.addressforall.org/digital-preservation-BR/master/data/in/br-donatedPack.csv'
      UNION ALL
-     SELECT 'refresh', 'wget -P /tmp/pg_io/digital-preservation-XX/  http://git-raw.addressforall.org/digital-preservartion-BR/master/data/br-donor.csv'
+     SELECT 'refresh', 'wget -P /tmp/pg_io/digital-preservation-XX/ -N http://git-raw.addressforall.org/digital-preservation-BR/master/data/in/br-donor.csv'
    )
    ,t2 as (
      SELECT string_agg(cmd,E'\n') as cmds
      FROM ( -- t3:
       SELECT cmd FROM t0, t1
-      WHERE (t0.s='all' AND t1.g<'999') OR iif(t0.s='all', true, p_subset=t1.g)
+      WHERE (t0.s='all' AND t1.g<'999') OR iif(t0.s='all', true, p_subset=t1.g) --  OR p_subset='002'
       ORDER BY g
      ) t3
    ) -- \t2
    SELECT COALESCE(
-          'Gravados '
+          'Anterior deletado: '||pg_catalog.pg_file_unlink((SELECT p_output_shfile||'-'||s||'.sh' FROM t0))::text
+          ||E'\nGravados '
           || pg_catalog.pg_file_write(output_shfile,t2.cmds,false)::text
           ||' bytes em '|| output_shfile ||E' \n'
           ,E'ERRO, algo NULL em optim.fdw_wgets_script() \n'
@@ -321,7 +323,62 @@ SELECT optim.fdw_generate(
   ],
   '/tmp/pg_io/digital-preservation-XX'
 );
+
+SELECT optim.fdw_generate(
+  -- usando ordem dos campos confirme git
+  'donor',  'br', 'optim',
+  array[
+    'id int',          'escopo text',      'shortName text',
+    'vat_id text',     'legalName text',   'wikidata_id bigint',
+    'url text'
+  ],
+  '/tmp/pg_io/digital-preservation-XX'
+);
+
+-----
+
+CREATE or replace FUNCTION optim.fdw_wgets_refresh(
+  -- second step (after wget) is to insert the "refresh group".
+  p_do_update boolean DEFAULT false
+) RETURNS text AS $f$
+  -- falta UPDATE jurisdiction e retornarc COUNTs! https://stackoverflow.com/a/25941849/287948
+  -- mudar para PLpgSQL e usar `GET DIAGNOSTICS my_var_tab = ROW_COUNT` a cada upsert.
+  INSERT INTO optim.jurisdiction
+    SELECT * FROM tmp_orig.fdw_jurisdiction_br
+    ON CONFLICT DO NOTHING
+  ; -- ok
+  INSERT INTO optim.donor
+    SELECT * FROM tmp_orig.fdw_donor_br
+    ON CONFLICT (id)
+    DO UPDATE
+       SET  id=EXCLUDED.id, scope=EXCLUDED.scope, shortName=EXCLUDED.shortName,
+            vat_id=EXCLUDED.vat_id, legalName=EXCLUDED.legalName,
+            wikidata_id=EXCLUDED.wikidata_id, url=EXCLUDED.url
+       WHERE p_do_update
+  ;
+  INSERT INTO optim.donatedPack
+    SELECT pack_id,donor_id,user_resp,accepted_date,escopo,about, null,
+           jsonb_build_object(
+             'author',author,      'contentReferenceTime',contentReferenceTime,
+             'license_is_explicit',text_to_boolean(license_is_explicit),
+             'license',license,   'uri_objType',uri_objType,
+             'uri',uri,           'isAt_UrbiGIS',text_to_boolean(isAt_UrbiGIS)
+           )
+    FROM tmp_orig.fdw_donatedPack_br
+    ON CONFLICT (pack_id)
+    DO UPDATE
+    SET  pack_id=EXCLUDED.pack_id,      donor_id=EXCLUDED.donor_id,
+         user_resp=EXCLUDED.user_resp,  accepted_date=EXCLUDED.accepted_date,
+         escopo=EXCLUDED.escopo,        about=EXCLUDED.about,
+         config_commom=EXCLUDED.config_commom, info=EXCLUDED.info
+    WHERE p_do_update
+  ;-- ok
+  -- usar ROW_COUNT a cada caso!
+  SELECT 'OK, inserted new itens at jurisdiction, donor and donatedPack. ';
+$f$ language SQL;
+
 -- falta   SELECT optim.fdw_generate_getclone('origin_content_type', NULL, 'optim');
+/* deu pau pois inverte ordem do CSV
 PREPARE fdw_gen(text) AS SELECT optim.fdw_generate_getclone($1, 'br', 'optim', array['info'],null, '/tmp/pg_io/digital-preservation-XX');
   EXECUTE fdw_gen('donor');         -- creates tmp_orig.fdw_donor_br
   -- (só publica nao ingere) EXECUTE fdw_gen('origin');        -- creates tmp_orig.fdw_origin_br

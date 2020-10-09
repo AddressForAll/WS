@@ -2,26 +2,7 @@
 --
 INSERT INTO optim.auth_user(username) VALUES ('enio'),('igor'),('peter'); -- minimal one Linux's /home/username
 
-INSERT INTO optim.jurisdiction
-  SELECT * FROM tmp_orig.fdw_jurisdiction_br
-  ON CONFLICT DO NOTHING
-; -- ok
-INSERT INTO optim.donor
-  SELECT * FROM tmp_orig.fdw_donor_br
-  ON CONFLICT DO NOTHING
-; -- ok
-INSERT INTO optim.donatedPack
-  SELECT pack_id,donor_id,user_resp,accepted_date,escopo,about, null,
-         jsonb_build_object(
-           'author',author,      'contentReferenceTime',contentReferenceTime,
-           'license_is_explicit',text_to_boolean(license_is_explicit),
-           'license',license,   'uri_objType',uri_objType,
-           'uri',uri,           'isAt_UrbiGIS',text_to_boolean(isAt_UrbiGIS)
-         )
-  FROM tmp_orig.fdw_donatedPack_br
-  ON CONFLICT DO NOTHING
-;-- ok
-
+SELECT optim.fdw_wgets_refresh();
 
 
 /*
