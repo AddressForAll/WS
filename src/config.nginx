@@ -9,18 +9,6 @@ server {
         index  index.php index.html index.htm;
         access_log /var/log/nginx/addressforall.org.access_log;
 
-    # JSON SQL & RPC:
-    location /_sql.csv/ {
-      proxy_set_header Accept 'text/csv';
-      proxy_pass http://localhost:3104/;
-    }
-    location /_sql.json/ {
-      proxy_pass http://localhost:3104/;
-    }
-    location /_sql/ {
-      proxy_pass http://localhost:3104/;
-    }
-
     location / {
       try_files $uri $uri/  /index.php?uri=$uri;
     }
@@ -64,11 +52,14 @@ server {
         }
 } #end server
 
+
+# API!
+
 server {
-        server_name api.addressforall.org;
-        access_log /var/log/nginx/addressforall.org.access_log;
-        root /var/www/addressforall.org/;
-        index  index.php index.html index.htm;
+    server_name api.addressforall.org;
+    access_log /var/log/nginx/addressforall.org.access_log;
+    root /var/www/addressforall.org/;
+    index  index.php index.html index.htm;
 
     # JSON SQL & RPC:
     location /_sql.csv/ {
@@ -82,14 +73,16 @@ server {
       proxy_pass http://localhost:3104/;
     }
 
-    # API /v1{outputFormat}/{module}/{function}/{parameters}
+    # API /v1{formatoSaida}/{modulo}/{funcao}/{parametros}
+
     location ~ /v1(?:\.json)?/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)/(.+) {
-      proxy_pass http://localhost:3103/rpc/uridisp_$1_$2?p_uri=$3&$args;
+      proxy_pass http://localhost:3104/rpc/uridisp_$1_$2?p_uri=$3&$args;
     }
     location ~ /v1\.csv/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)/(.+) {
       proxy_set_header Accept 'text/csv';
-      proxy_pass http://localhost:3103/rpc/uridisp_$1_$2?p_uri=$3&$args;
+      proxy_pass http://localhost:3104/rpc/uridisp_$1_$2?p_uri=$3&$args;
     }
+
 } # \server
 
 server {
@@ -98,6 +91,11 @@ server {
     root /var/www/addressforall.org/;
     index  index.php index.html index.htm;
 
+    # ROOT, somente json:
+    location = / {
+      proxy_pass http://localhost:3103/rpc/apiroot;
+    }
+
     # JSON SQL & RPC:
     location /_sql.csv/ {
       proxy_set_header Accept 'text/csv';
@@ -110,16 +108,17 @@ server {
       proxy_pass http://localhost:3103/;
     }
 
-    # Others:
-    location ~ /v1(?:\.json)?/eclusa/checkUserFiles-step1/([a-zA-Z0-9_]+)/?(0|1|true|false)? {
-      proxy_pass http://localhost:3103/rpc/cityfolder_input_files_user?p_user=$1&p_is_valid=$2;
+    # API /v1{formatoSaida}/{modulo}/{funcao}/{parametros}
+
+    location ~ /v1(?:\.json)?/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)/(.+) {
+      proxy_pass http://localhost:3103/rpc/uridisp_$1_$2?p_uri=$3&$args;
     }
-    location ~ /v1(?:\.json)?/eclusa/checkUserFiles-step2/([a-zA-Z0-9_]+)/?(0|1|true|false)? {
-      proxy_pass http://localhost:3103/rpc/cityfolder_input_user?p_user=$1&p_is_valid=$2;
+    location ~ /v1\.csv/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)/(.+) {
+      proxy_set_header Accept 'text/csv';
+      proxy_pass http://localhost:3103/rpc/uridisp_$1_$2?p_uri=$3&$args;
     }
+
 } # \server
-
-
 
 server {
         server_name api-htm.addressforall.org;
@@ -137,6 +136,8 @@ server {
     }
 
 } # \server
+
+# ------------------------
 
 server {
         server_name addressforall.org addressforall.com www.addressforall.org;
