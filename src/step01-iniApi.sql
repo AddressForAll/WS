@@ -53,8 +53,15 @@ CREATE TABLE api.ttpl_eclusa04_hash ( -- IN USE??
 -- API.uri_dispatchers:
 -- note: after changes, $make dkr_refresh
 
+CREATE or replace FUNCTION API.apiroot() RETURNS jsonb AS $f$
+   SELECT '{"error_cod":1,"error_msg":"API LIST UNDER CONSTRUCTION"}'::jsonb
+$f$ language SQL immutable;
+COMMENT ON FUNCTION API.apiroot
+  IS 'Lists all current API functions.'
+;
+
 CREATE or replace FUNCTION API.uri_dispatch_parser(
-    uri text,        -- e.g. /eclusa/checkUserFiles-step1/igor/0
+    uri text,        -- e.g. /eclusa/checkUserFiles_step1/igor/0
     uri_prefix text[] DEFAULT NULL,  -- e.g. '{eclusa,checkuserfiles-step1}'
     args text DEFAULT NULL
 ) RETURNS text[] AS $f$

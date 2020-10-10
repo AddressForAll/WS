@@ -103,6 +103,11 @@ INSERT INTO optim.origin_content_type VALUES
   (104,'eixos','?','?',null,'bad')
 ;
 /*
+INSERT INTO optim.origin_content_type VALUES
+  (131,'transporte_publico','Rotas do transporte publico','?',FALSE,'bad'),
+  (132,'license','Declaracao de licenca de uso do dado','?',FALSE,'bad'),
+  (133,'edificacoes_lotes_quadras','?','?',FALSE,'bad');
+
 -- id=100 em diante, ver select distinct ctype from eclusa.cityfolder_input('igor') order by 1;
 cad
  data
@@ -144,7 +149,6 @@ CREATE TABLE IF NOT EXISTS optim.origin(
    ,UNIQUE(fhash)
    ,UNIQUE(jurisd_osm_id,fname,fversion,ctype) -- ,kx_ingest_date=ingest_instant::date
 );
-
 CREATE VIEW optim.vw01_origin AS
   SELECT o.*,
          j.name as jurisd_name,         j.parent_abbrev as jurisd_state,
@@ -159,6 +163,14 @@ CREATE VIEW optim.vw01_origin AS
        INNER JOIN optim.origin_content_type ct ON o.ctype=ct.label
        INNER JOIN optim.donatedPack p          ON o.pack_id=p.pack_id
      ) INNER JOIN optim.donor d ON p.donor_id = d.id
+;
+CREATE VIEW optim.vwdump_origin AS  -- for digital-preservation-XX/out need a function!
+  SELECT  id,jurisd_osm_id,ctype,pack_id,fhash,fname,fversion,is_valid,
+          fmeta -'fpath' -'creation' -'modification' AS fmeta,
+          config,ingest_instant
+  FROM optim.origin
+  -- where jurisd_osm_id in country and year(accepted_date) is current
+  ORDER BY id
 ;
 
 CREATE VIEW optim.vw_source AS -- ORIGIN+donatedPack
