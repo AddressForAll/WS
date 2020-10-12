@@ -10,8 +10,16 @@ iniExts  = "CREATE EXTENSION IF NOT EXISTS hstore; CREATE EXTENSION IF NOT EXIST
 
 ini_all: ini_database_list_tmp ini_step1 ini_step2 ini_step3_api ini_step4_optim optim_step1 clean
 
-ini_database_list_tmp:
+ini_tmprefresh:
+	whoami
+	@echo "Run with sudo! (idempotent)"
 	mkdir -p /tmp/pg_io
+	mkdir -p /tmp/pg_io/digital-preservartion-XX
+	chmod -R 776  /tmp/pg_io
+	chown -R postgres:postgres /tmp/pg_io/
+	touch /opt/lock-mkStatus/tmp-makeStep00.~feito
+
+ini_database_list_tmp: /opt/lock-mkStatus/tmp-makeStep00.~feito  # not sudor
 	psql -lqt | cut -d \| -f 1 > /tmp/pg_io/database_list_tmp.txt
 
 ini_step1: ini_database_list_tmp

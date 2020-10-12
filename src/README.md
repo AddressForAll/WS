@@ -6,7 +6,7 @@ Para a gestão de módulos específicos, por exemplo Projeto de Preservação Di
 Alguns serviços, como o Docker, requerem sudor (ex. `sudo make` ou `sudo docker-compose up dkname`).
 
 ## Make geral
-O comando `make all` vai iniciarlizar todas as basees de dados e todos os Dockers. 
+O comando `make all` vai iniciarlizar todas as basees de dados e todos os Dockers.
 **CUIDADO**, apesar de desenvolvido para não destruir bases e serviços, não realizar esse comando sem garantia prévia de backup.
 
 
@@ -37,7 +37,7 @@ Para gerenciar, comandos mais frequentes neste projeto:
 * `sudo docker ps` lista todos os processos de docker rodando.
 * `sudo image ls` lista todas as imagens disponíveis para se instanciar (conferir versão e manter atualizado com ??).
 * `sudo docker-compose down` ["mata"](https://stackoverflow.com/a/51517764/287948) todos os dockers.
-* `sudo docker-compose down` "mata" só o 
+* `sudo docker-compose down` "mata" só o
 * `docker-compose pull` ...
 * `docker-compose create` ...
 * `docker-compose start` ...
@@ -46,10 +46,13 @@ Para debug do que está rodando:
 * `sudo docker ps` (localize o ID por ex. "9bb").
 * `sudo docker inspect 9bb`
 
-## permissoes online no WS 
+Um comando de uso frequente para caso de reestruturacao de tabelas e funcoes, usar direto `make dkr_refresh` ou:
+```sh
+sudo make -C /opt/gits/WS/src dkr_refresh
+```
+## permissoes online no WS
 
 Urgente: mudar permissao `PGRST_DB_ANON_ROLE` no docker-composer.
 
 Ver como rodar com senhas e limitações em
 http://postgrest.org/en/v7.0.0/tutorials/tut0.html#step-4-create-database-for-api
-

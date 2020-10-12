@@ -33,10 +33,11 @@ CREATE TABLE IF NOT EXISTS optim.jurisdiction ( -- only current
   isolabel_ext text NOT NULL,  -- cache from parent_abbrev (ISO) and name (camel case); e.g. 'BR-SP-SaoPaulo'.
   ddd          integer, -- Direct distance dialing
   info JSONb -- admin_level, creation, extinction, postalCode_ranges, notes, etc.
+  ,UNIQUE(isolabel_ext)
+  ,UNIQUE(wikidata_id)
   ,UNIQUE(jurisd_base_id,jurisd_local_id)
   ,UNIQUE(jurisd_base_id,parent_abbrev,name) -- parent-abbrev é null ou cumulativo
   ,UNIQUE(jurisd_base_id,parent_abbrev,lexlabel)
-  ,UNIQUE(jurisd_base_id,parent_abbrev,isolabel_ext)
   ,UNIQUE(jurisd_base_id,parent_abbrev,abbrev)
 );
 
@@ -49,7 +50,9 @@ CREATE TABLE optim.donor (
   wikidata_id bigint,  -- without "Q" prefix
   url text,     -- official home page of the organization
   info JSONb,   -- all other information using controlled keys
+  kx_vat_id text,    -- cache for search
   UNIQUE(vat_id),
+  UNIQUE(kx_vat_id),
   UNIQUE(scope,legalName)
 );
 
@@ -131,7 +134,7 @@ cad
  vegetacao
 */
 
-CREATE TABLE IF NOT EXISTS optim.origin(
+CREATE TABLE optim.origin(
    id serial           NOT NULL PRIMARY KEY,
    jurisd_osm_id int   NOT NULL REFERENCES optim.jurisdiction(osm_id), -- scope of data, desmembrando arquivos se possível.
    ctype text          NOT NULL REFERENCES optim.origin_content_type(label),  -- .. tipo de entrada que amarra com config!
@@ -197,6 +200,25 @@ CREATE VIEW optim.vw01_origin AS
      ) LEFT JOIN optim.donor d ON p.donor_id = d.id
 ;
 */
+
+
+-- -- --
+-- TRIGGERS AND COLUMN-CACHES
+
+CREATE FUNCTION optim.vat_id_normalize(p_vat_id text) RETURNS text AS $f$
+  SELECT lower(regexp_replace($1,'[,\.;/\-\+\*~]+','','g'))
+$f$ language SQL immutable;
+
+CREATE FUNCTION optim.input_donor() RETURNS TRIGGER AS $f$
+BEGIN
+  NEW.kx_vat_id := optim.vat_id_normalize(NEW.vat_id);
+	RETURN NEW;
+END;
+$f$ LANGUAGE PLpgSQL;
+CREATE TRIGGER check_kx_vat_id
+    BEFORE INSERT OR UPDATE ON optim.donor
+    FOR EACH ROW EXECUTE PROCEDURE optim.input_donor()
+;
 
 -- -- --
 -- SQL and bash generators (optim-ingest submodule)
@@ -296,28 +318,26 @@ $f$ language SQL immutable;
 -- -- --
 -- API
 
-CREATE VIEW api.jurisdiction AS SELECT * FROM optim.jurisdiction
+CREATE or replace VIEW api.jurisdiction AS SELECT * FROM optim.jurisdiction
 ; COMMENT ON VIEW api.jurisdiction
   IS 'An optim core table.'
 ;
-CREATE VIEW api.donor AS        SELECT * FROM optim.donor
+CREATE or replace VIEW api.donor AS        SELECT * FROM optim.donor
 ; COMMENT ON VIEW api.donor
-  IS 'An optim table and Digital Preservation core.'
+  IS 'Donor View. An optim table and Digital Preservation core.'
 ;
-CREATE VIEW api.donatedPack AS  SELECT * FROM optim.donatedPack
+CREATE or replace VIEW api.donatedPack AS  SELECT * FROM optim.donatedPack
 ; COMMENT ON VIEW api.donatedPack
-  IS 'An optim table and Digital Preservation core.'
+  IS 'DonatedPack View. An optim table and Digital Preservation core.'
 ;
-CREATE VIEW api.origin AS       SELECT * FROM optim.origin
+CREATE or replace VIEW api.origin AS       SELECT * FROM optim.origin
 ; COMMENT ON VIEW api.origin
-  IS 'An optim table and Digital Preservation core.'
+  IS 'Origin View. An optim table and Digital Preservation core.'
 ;
-CREATE VIEW api.origin_content_type AS SELECT * FROM optim.origin_content_type
+CREATE or replace VIEW api.origin_content_type AS SELECT * FROM optim.origin_content_type
 ; COMMENT ON VIEW api.origin_content_type
   IS 'An optim table and Digital Preservation core.'
 ;
-
-
 
 -- -- --
 -- Pre-insert (generating FDWs)
@@ -334,7 +354,7 @@ SELECT optim.fdw_generate(
     'uri text',           'isAt_UrbiGIS text'
   ],
   '/tmp/pg_io/digital-preservation-XX'
-);
+); -- creates tmp_orig.fdw_donatedPack_br
 
 SELECT optim.fdw_generate(
   -- usando ordem dos campos confirme git

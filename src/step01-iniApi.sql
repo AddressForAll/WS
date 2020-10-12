@@ -10,9 +10,29 @@ CREATE TABLE api.ttpl_general01_namecheck(
   IS 'Standard check-names structure. Ref. eclusa.cityfolder_validUsers().'
 ;
 
+CREATE TABLE api.ttpl_core01_jurisdiction(LIKE optim.jurisdiction  -- revisar??
+); COMMENT ON TABLE api.ttpl_core01_jurisdiction
+  IS 'Standard Jurisdiction view.'
+;
+CREATE TABLE api.ttpl_core02_donor(
+  --LIKE optim.donor -kx_vat_id
+  id serial NOT NULL primary key,
+  scope text, -- city code or country code
+  shortname text, -- abreviation or acronym
+  vat_id text,    -- in the Brazilian case is "CNPJ:number"
+  legalName text NOT NULL, -- in the Brazilian case is Razao Social
+  wikidata_id bigint,  -- without "Q" prefix
+  url text,     -- official home page of the organization
+  info JSONb,   -- all other information using controlled keys
+  kx JSONb  -- cache to transport JOINED coluns
+); COMMENT ON TABLE api.ttpl_core02_donor
+  IS 'Standard Donor view.'
+;
+
+
 CREATE TABLE api.ttpl_eclusa01_packdir(
   username text, jurisdiction_label text,
-  jurisdiction_osmid bigint, pack_path text, pack_id int
+  jurisdiction_osmid bigint, pack_path text, pack_id int, packinfo JSONb
   ,UNIQUE(pack_id)
   ,UNIQUE(pack_path)
 ); COMMENT ON TABLE api.ttpl_general01_namecheck
