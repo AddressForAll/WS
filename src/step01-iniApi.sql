@@ -1,5 +1,29 @@
 CREATE SCHEMA IF NOT EXISTS api;
 
+-- -- -- -- -- -- -- -- -- -- --
+-- DIRECT clones of core tables.
+
+CREATE or replace VIEW api.jurisdiction AS SELECT * FROM optim.jurisdiction
+; COMMENT ON VIEW api.jurisdiction
+  IS 'An optim core table.'
+;
+CREATE or replace VIEW api.donor AS        SELECT * FROM optim.donor
+; COMMENT ON VIEW api.donor
+  IS 'Donor View. An optim table and Digital Preservation core.'
+;
+CREATE or replace VIEW api.donatedPack AS  SELECT * FROM optim.donatedPack
+; COMMENT ON VIEW api.donatedPack
+  IS 'DonatedPack View. An optim table and Digital Preservation core.'
+;
+CREATE or replace VIEW api.origin AS       SELECT * FROM optim.origin
+; COMMENT ON VIEW api.origin
+  IS 'Origin View. An optim table and Digital Preservation core.'
+;
+CREATE or replace VIEW api.origin_content_type AS SELECT * FROM optim.origin_content_type
+; COMMENT ON VIEW api.origin_content_type
+  IS 'An optim table and Digital Preservation core.'
+;
+
 -- -- -- -- -- -- -- --
 -- API TABLE TEMPLATEs. Definições globais, com origem em diversos projetos.
 
@@ -12,7 +36,7 @@ CREATE TABLE api.ttpl_general01_namecheck(
 
 CREATE TABLE api.ttpl_core01_jurisdiction(LIKE optim.jurisdiction  -- revisar??
 ); COMMENT ON TABLE api.ttpl_core01_jurisdiction
-  IS 'Standard Jurisdiction view.'
+  IS 'Standard Jurisdiction view, core data model.'
 ;
 CREATE TABLE api.ttpl_core02_donor(
   --LIKE optim.donor -kx_vat_id
@@ -26,9 +50,17 @@ CREATE TABLE api.ttpl_core02_donor(
   info JSONb,   -- all other information using controlled keys
   kx JSONb  -- cache to transport JOINED coluns
 ); COMMENT ON TABLE api.ttpl_core02_donor
-  IS 'Standard Donor view.'
+  IS 'Standard Donor view, core data model.'
 ;
 
+CREATE TABLE api.ttpl_core03_origin(
+  -- LIKE optim.origin + kx
+  id int, jurisd_osm_id bigint, ctype text, pack_id int, fhash text,
+  fname text, fversion smallint, kx_cmds text[], is_valid boolean, is_open boolean,
+  fmeta jsonb, config jsonb, ingest_instant timestamp, kx jsonb
+); COMMENT ON TABLE api.ttpl_core03_origin
+  IS 'Standard Origin view, core data model.'
+;
 
 CREATE TABLE api.ttpl_eclusa01_packdir(
   username text, jurisdiction_label text,
@@ -174,14 +206,19 @@ CREATE or replace FUNCTION API.uridisp_vw_core_donor(
         SELECT t2.id, scope, shortname, vat_id, legalName, wikidata_id, url, info,
              CASE
                WHEN j1.n_packs IS NULL THEN NULL::jsonb
-               ELSE jsonb_build_object('n_files',j1.n_files, 'n_packs',j1.n_packs, 'tot_bytes',j1.tot_bytes)
+               ELSE jsonb_build_object(
+                 'n_packs',j1.n_packs,
+                 'n_files',j1.n_files,
+                 'tot_bytes',j1.tot_bytes
+               )
              END as kx
         FROM API.uri_dispatch_parser(p_uri) t1(p) -- rev ,'{eclusa,checkuserfiles_step2}'
         INNER JOIN optim.donor t2 ON t1.p[1] IS NOT NULL
         LEFT JOIN (
           SELECT donor_id,
                  count(distinct pack_id) AS n_packs,
-                 count(*) AS n_files, sum((fmeta->'size')::int) as tot_bytes
+                 count(*) AS n_files,
+                 sum((fmeta->'size')::int) as tot_bytes
           FROM optim.vw01_origin
           GROUP BY donor_id
         ) j1 ON j1.donor_id = t2.id
@@ -195,3 +232,30 @@ $f$ language SQL immutable;
 COMMENT ON FUNCTION API.uridisp_vw_core_donor
   IS 'Donor basic properties, from many alternatives to express its identification.'
 ;
+
+-- CREATE or replace FUNCTION API.uridisp_vw_core_pack(
+
+CREATE or replace FUNCTION API.uridisp_vw_core_origin(
+    p_uri text DEFAULT '', -- /vw_core/origin/{id|hashFile|hash|partialHash} ou pack_id/partialHash
+    p_args text DEFAULT NULL
+) RETURNS TABLE (LIKE api.ttpl_core03_origin) AS $f$
+        SELECT t2.id, jurisd_osm_id, ctype, pack_id, fhash,
+               fname, fversion, kx_cmds, is_valid, is_open,
+               fmeta, config, ingest_instant, jsonb_build_object(
+                 'donor',jsonb_build_object('id',donor_id, 'vat_id',donor_vat_id, 'shortname',donor_shortname, 'legalname',donor_legalname, 'url',donor_url),
+                 'jurisd',jsonb_build_object('name',jurisd_name, 'state',jurisd_state, 'abbrev3',jurisd_abbrev3, 'isolabel_ext',jurisd_isolabel_ext),
+                 'pack',jsonb_build_object('user_resp',user_resp, 'accepted_date',accepted_date, 'config_commom',config_commom, 'ctype_id',ctype_id, 'ctype_model_geo',ctype_model_geo)
+               ) as kx
+        FROM API.uri_dispatch_parser(p_uri) t1(p) -- rev ,'{eclusa,checkuserfiles_step2}'
+        INNER JOIN optim.vw01_origin t2 ON t1.p[1] IS NOT NULL
+        WHERE CASE
+          WHEN t1.p[1]~'^\d+$'  THEN t2.id=(t1.p[1])::int
+          WHEN t1.p[1]~'^sha256:[0-9a-fA-F]{4}' THEN t2.fhash ~ ('^'||lower(substr(t1.p[1],8)))
+          END
+$f$ language SQL immutable;
+COMMENT ON FUNCTION API.uridisp_vw_core_donor
+  IS 'Origin properties, from ID or hash as identificators.'
+;
+
+-- CREATE or replace FUNCTION API.uridisp_vw_core_origins
+-- by ctype, pack or jurisd

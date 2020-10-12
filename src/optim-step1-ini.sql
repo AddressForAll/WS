@@ -136,7 +136,7 @@ cad
 
 CREATE TABLE optim.origin(
    id serial           NOT NULL PRIMARY KEY,
-   jurisd_osm_id int   NOT NULL REFERENCES optim.jurisdiction(osm_id), -- scope of data, desmembrando arquivos se possível.
+   jurisd_osm_id bigint  NOT NULL REFERENCES optim.jurisdiction(osm_id), -- scope of data, desmembrando arquivos se possível.
    ctype text          NOT NULL REFERENCES optim.origin_content_type(label),  -- .. tipo de entrada que amarra com config!
    pack_id int         NOT NULL REFERENCES optim.donatedPack(pack_id), -- um ou mais origins no mesmo paxck.
    fhash text          NOT NULL, -- sha256 is a finger print
@@ -154,7 +154,7 @@ CREATE TABLE optim.origin(
 );
 CREATE VIEW optim.vw01_origin AS
   SELECT o.*,
-         j.name as jurisd_name,         j.parent_abbrev as jurisd_state,
+         j.name as jurisd_name,         j.parent_abbrev as jurisd_state, -- corrigir para jurisd_parent_abbrev
          j.abbrev AS jurisd_abbrev3,    j.isolabel_ext AS jurisd_isolabel_ext,
          p.donor_id, p.user_resp,
          d.vat_id AS donor_vat_id,     d.shortname AS donor_shortname,
@@ -315,29 +315,6 @@ CREATE or replace FUNCTION optim.fdw_wgets_script(
    FROM t2, (SELECT p_output_shfile||'-'||s||'.sh' FROM t0) t4(output_shfile);
 $f$ language SQL immutable;
 
--- -- --
--- API
-
-CREATE or replace VIEW api.jurisdiction AS SELECT * FROM optim.jurisdiction
-; COMMENT ON VIEW api.jurisdiction
-  IS 'An optim core table.'
-;
-CREATE or replace VIEW api.donor AS        SELECT * FROM optim.donor
-; COMMENT ON VIEW api.donor
-  IS 'Donor View. An optim table and Digital Preservation core.'
-;
-CREATE or replace VIEW api.donatedPack AS  SELECT * FROM optim.donatedPack
-; COMMENT ON VIEW api.donatedPack
-  IS 'DonatedPack View. An optim table and Digital Preservation core.'
-;
-CREATE or replace VIEW api.origin AS       SELECT * FROM optim.origin
-; COMMENT ON VIEW api.origin
-  IS 'Origin View. An optim table and Digital Preservation core.'
-;
-CREATE or replace VIEW api.origin_content_type AS SELECT * FROM optim.origin_content_type
-; COMMENT ON VIEW api.origin_content_type
-  IS 'An optim table and Digital Preservation core.'
-;
 
 -- -- --
 -- Pre-insert (generating FDWs)
