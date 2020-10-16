@@ -172,6 +172,13 @@ CREATE or replace FUNCTION API.uridisp_vw_core_jurisdiction(
         INNER JOIN optim.jurisdiction  t2 -- or api.jurisdiction?
         ON t1.p[1] IS NOT NULL
         WHERE CASE
+          -- retorna listagem:
+          -- WHEN t1.p[1] IS NULL OR  t1.p[1]='' THEN true
+          WHEN t1.p[1]~'^isolabel_ext\.lk\..+$'  THEN upper(t2.isolabel_ext) LIKE (upper(substr(t1.p[1],17))||'%')
+          WHEN t1.p[1]~'^parent_abbrev\.lk\..+$' THEN
+            t2.isolabel_ext LIKE (upper(substr(t1.p[1],18))||'%') and t2.parent_abbrev=upper(substr(t1.p[1],18))
+          WHEN t1.p[1]~'^parent_abbrev\.eq\..+$' THEN t2.parent_abbrev = upper(substr(t1.p[1],18))
+          -- retorna item exato:
           WHEN t1.p[1] LIKE 'br-__-___' THEN
                t2.abbrev=upper(substr(t1.p[1],7))
                AND substr(t2.isolabel_ext,1,6)=upper(substr(t1.p[1],1,6))
@@ -200,8 +207,9 @@ COMMENT ON FUNCTION API.uridisp_vw_core_jurisdiction
 -- vai devolver o mapa com atributos basicos retornados da funcao. Decidir se havera NGINX detectando extensao.
 
 CREATE or replace FUNCTION API.uridisp_vw_core_donor(
-    p_uri text DEFAULT '', -- /vw_core/jurisdiction/{isolabel_ext}/{geojson}
+    p_uri text DEFAULT '', -- /vw_core/jurisdiction/{param}
     p_args text DEFAULT NULL
+    -- e.g. http://api-test.addressforall.org/v1/vw_core/donor/3
 ) RETURNS TABLE (LIKE api.ttpl_core02_donor) AS $f$
         SELECT t2.id, scope, shortname, vat_id, legalName, wikidata_id, url, info,
              CASE
@@ -213,7 +221,7 @@ CREATE or replace FUNCTION API.uridisp_vw_core_donor(
                )
              END as kx
         FROM API.uri_dispatch_parser(p_uri) t1(p) -- rev ,'{eclusa,checkuserfiles_step2}'
-        INNER JOIN optim.donor t2 ON t1.p[1] IS NOT NULL
+        INNER JOIN optim.donor t2 ON true
         LEFT JOIN (
           SELECT donor_id,
                  count(distinct pack_id) AS n_packs,
@@ -223,14 +231,19 @@ CREATE or replace FUNCTION API.uridisp_vw_core_donor(
           GROUP BY donor_id
         ) j1 ON j1.donor_id = t2.id
         WHERE CASE
+          WHEN t1.p[1] IS NULL OR  t1.p[1]='' THEN true
           WHEN t1.p[1]~'^\d+$'  THEN t2.id=(t1.p[1])::int
           WHEN t1.p[1]~'^q\d+$' THEN t2.wikidata_id=(substr(t1.p[1],2)::bigint)
-          WHEN t1.p[1]~'^[a-z]+:.+$' THEN t2.kx_vat_id=optim.vat_id_normalize(t1.p[1])
+          WHEN t1.p[1]~'^scope\.lk\.+$'     THEN t2.scope LIKE (upper(substr(t1.p[1],10))||'%')
+          WHEN t1.p[1]~'^legalname\.lk\.+$' THEN upper(t2.legalName) LIKE ('%'||upper(substr(t1.p[1],14))||'%')
+          WHEN t1.p[1]~'^url\.lk\.+$'       THEN t2.url LIKE ('%'||lower(substr(t1.p[1],8))||'%')
+          WHEN t1.p[1]~'^shortname\.lk\.+$' THEN t2.shortname LIKE (upper(substr(t1.p[1],14))||'%')
+          WHEN t1.p[1]~'^[a-z]+:.+$'    THEN t2.kx_vat_id=optim.vat_id_normalize(t1.p[1])
           ELSE t2.shortname=upper(t1.p[1])
           END
 $f$ language SQL immutable;
 COMMENT ON FUNCTION API.uridisp_vw_core_donor
-  IS 'Donor basic properties, from many alternatives to express its identification.'
+  IS 'Donor basic properties, from many alternatives to express its identification or lists.'
 ;
 
 -- CREATE or replace FUNCTION API.uridisp_vw_core_pack(
@@ -249,13 +262,25 @@ CREATE or replace FUNCTION API.uridisp_vw_core_origin(
         FROM API.uri_dispatch_parser(p_uri) t1(p) -- rev ,'{eclusa,checkuserfiles_step2}'
         INNER JOIN optim.vw01_origin t2 ON t1.p[1] IS NOT NULL
         WHERE CASE
+          -- LIST:
+          WHEN t1.p[1] LIKE 'jurisd_osm_id.eq._%'       THEN t2.jurisd_osm_id=substr(t1.p[1],18)::bigint
+          WHEN t1.p[1] LIKE 'jurisd_isolabel_ext.eq._%' THEN upper(t2.jurisd_isolabel_ext)=upper(substr(t1.p[1],24))
+          WHEN t1.p[1] LIKE 'donor_id.eq._%'            THEN t2.donor_id=substr(t1.p[1],13)::int
+          WHEN t1.p[1] LIKE 'donor_shortname.eq._%'     THEN t2.donor_shortname=upper(substr(t1.p[1],20))
+          WHEN t1.p[1] LIKE 'jurisd_state.eq._%' THEN
+            t2.jurisd_isolabel_ext LIKE ('__-'||upper(substr(t1.p[1],17))||'%') and t2.jurisd_state=upper(substr(t1.p[1],17))
+          -- one ITEM:
           WHEN t1.p[1]~'^\d+$'  THEN t2.id=(t1.p[1])::int
           WHEN t1.p[1]~'^sha256:[0-9a-fA-F]{4}' THEN t2.fhash ~ ('^'||lower(substr(t1.p[1],8)))
           END
 $f$ language SQL immutable;
-COMMENT ON FUNCTION API.uridisp_vw_core_donor
+COMMENT ON FUNCTION API.uridisp_vw_core_origin
   IS 'Origin properties, from ID or hash as identificators.'
 ;
+
+Atributos: Há no antigo banco old_dl03t_main a view: api.origin que retorna uma série de atributos ao juntar: origin, city, donatedpack e donor, do schema ingest e precisa ser replicado para manter a visualização. Provavelmente será usada então dl03t_main.ingest.vw01_origin.
+Filtros: Adicionado api.vw_states_origin ao bd dl03t_main que será utilizado para filtrar origens por estado.
+
 
 -- CREATE or replace FUNCTION API.uridisp_vw_core_origins
 -- by ctype, pack or jurisd
