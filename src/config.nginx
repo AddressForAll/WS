@@ -55,7 +55,7 @@ server {
 
 # API!
 
-server {
+server { # API-STABLE
     server_name api.addressforall.org;
     access_log /var/log/nginx/addressforall.org.access_log;
     root /var/www/addressforall.org/;
@@ -82,10 +82,9 @@ server {
       proxy_set_header Accept 'text/csv';
       proxy_pass http://localhost:3104/rpc/uridisp_$1_$2?p_uri=$3&$args;
     }
-
 } # \server
 
-server {
+server { # API-TEST
     server_name api-test.addressforall.org;
     access_log /var/log/nginx/addressforall.org.access_log;
     root /var/www/addressforall.org/;
@@ -109,16 +108,17 @@ server {
     }
 
     # API /v1{formatoSaida}/{modulo}/{funcao}/{parametros}
+
     location ~ /v1(?:\.json)?/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)(?:/(.*)|) {
       proxy_pass http://localhost:3103/rpc/uridisp_$1_$2?p_uri=$3&$args;
     }
-    location ~ /v1\.csv/([a-z_][a-z0-9_]*)(?:~(agg))?/([a-z_][a-z0-9_]*)(?:/(.*)|) {
+    location ~ /v1\.csv/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)(?:/(.*)|) {
       proxy_set_header Accept 'text/csv';
       proxy_pass http://localhost:3103/rpc/uridisp_$1_$2?p_uri=$3&$args;
     }
     location  ^~ /v1.htm {
-      rewrite ^/?v1\.html?/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)/(.+)$ /index.php?api_p1=$1&api_p2=$2&api_uri=$3 break;
-      rewrite ^/?v1\.html?/?(.*)$ /index.php?api_p1=$1 break;
+      rewrite ^/?v1\.html?/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)/(.+)$ /index.php?api_p1=$1&api_p2=$2&api_uri=$3&$args break;
+      rewrite ^/?v1\.html?/?(.*)$ /index.php?api_p1=$1&$args break;
 
       include snippets/fastcgi-php.conf;
       fastcgi_pass unix:/run/php/php7.4-fpm.sock;
@@ -139,7 +139,6 @@ server {
           include snippets/fastcgi-php.conf;
           fastcgi_pass unix:/run/php/php7.4-fpm.sock;
     }
-
 } # \server
 
 # ------------------------

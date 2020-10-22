@@ -234,10 +234,10 @@ CREATE or replace FUNCTION API.uridisp_vw_core_donor(
           WHEN t1.p[1] IS NULL OR  t1.p[1]='' THEN true
           WHEN t1.p[1]~'^\d+$'  THEN t2.id=(t1.p[1])::int
           WHEN t1.p[1]~'^q\d+$' THEN t2.wikidata_id=(substr(t1.p[1],2)::bigint)
-          WHEN t1.p[1]~'^scope\.lk\.+$'     THEN t2.scope LIKE (upper(substr(t1.p[1],10))||'%')
-          WHEN t1.p[1]~'^legalname\.lk\.+$' THEN upper(t2.legalName) LIKE ('%'||upper(substr(t1.p[1],14))||'%')
-          WHEN t1.p[1]~'^url\.lk\.+$'       THEN t2.url LIKE ('%'||lower(substr(t1.p[1],8))||'%')
-          WHEN t1.p[1]~'^shortname\.lk\.+$' THEN t2.shortname LIKE (upper(substr(t1.p[1],14))||'%')
+          WHEN t1.p[1]~'^scope\.lk\..+$'     THEN t2.scope LIKE (upper(substr(t1.p[1],10))||'%')
+          WHEN t1.p[1]~'^legalname\.lk\..+$' THEN upper(t2.legalName) LIKE ('%'||upper(substr(t1.p[1],14))||'%')
+          WHEN t1.p[1]~'^url\.lk\..+$'       THEN t2.url LIKE ('%'||lower(substr(t1.p[1],8))||'%')
+          WHEN t1.p[1]~'^shortname\.lk\..+$' THEN t2.shortname LIKE (upper(substr(t1.p[1],14))||'%')
           WHEN t1.p[1]~'^[a-z]+:.+$'    THEN t2.kx_vat_id=optim.vat_id_normalize(t1.p[1])
           ELSE t2.shortname=upper(t1.p[1])
           END
@@ -278,8 +278,9 @@ COMMENT ON FUNCTION API.uridisp_vw_core_origin
   IS 'Origin properties, from ID or hash as identificators.'
 ;
 
-Atributos: Há no antigo banco old_dl03t_main a view: api.origin que retorna uma série de atributos ao juntar: origin, city, donatedpack e donor, do schema ingest e precisa ser replicado para manter a visualização. Provavelmente será usada então dl03t_main.ingest.vw01_origin.
-Filtros: Adicionado api.vw_states_origin ao bd dl03t_main que será utilizado para filtrar origens por estado.
+-- REVISAR views pendentes!
+--Atributos: Há no antigo banco old_dl03t_main a view: api.origin que retorna uma série de atributos ao juntar: origin, city, donatedpack e donor, do schema ingest e precisa ser replicado para manter a visualização. Provavelmente será usada então dl03t_main.ingest.vw01_origin.
+--Filtros: Adicionado api.vw_states_origin ao bd dl03t_main que será utilizado para filtrar origens por estado.
 
 
 -- CREATE or replace FUNCTION API.uridisp_vw_core_origins
