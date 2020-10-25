@@ -118,6 +118,7 @@ server { # API-TEST
     }
     location  ^~ /v1.htm {
       rewrite ^/?v1\.html?/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)/(.+)$ /index.php?api_p1=$1&api_p2=$2&api_uri=$3&$args break;
+      rewrite ^/?v1\.html?/([a-z_][a-z0-9_]*)/?(.*)$ /index.php?api_p1=$1&api_p2=$2&$args break;
       rewrite ^/?v1\.html?/?(.*)$ /index.php?api_p1=$1&$args break;
 
       include snippets/fastcgi-php.conf;

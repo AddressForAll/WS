@@ -173,7 +173,7 @@ CREATE or replace FUNCTION API.uridisp_vw_core_jurisdiction(
         ON t1.p[1] IS NOT NULL
         WHERE CASE
           -- retorna listagem:
-          -- WHEN t1.p[1] IS NULL OR  t1.p[1]='' THEN true
+          WHEN t1.p[1] IS NULL OR  t1.p[1]='' THEN true
           WHEN t1.p[1]~'^isolabel_ext\.lk\..+$'  THEN upper(t2.isolabel_ext) LIKE (upper(substr(t1.p[1],17))||'%')
           WHEN t1.p[1]~'^parent_abbrev\.lk\..+$' THEN
             t2.isolabel_ext LIKE (upper(substr(t1.p[1],18))||'%') and t2.parent_abbrev=upper(substr(t1.p[1],18))

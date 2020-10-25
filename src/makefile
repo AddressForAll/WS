@@ -102,3 +102,31 @@ status_schProd:
 	psql dl02s_osm  -c "\dn"
 	@echo "-- MAIN stable database DL04s_main:"
 	psql dl04s_main -c "\dn"
+
+dir_ini:
+	whoami
+	@echo "Run with sudo! (idempotent)"
+	mkdir -p /opt/BKPS
+	mkdir -p /opt/gits
+	mkdir -p /opt/lock-mkStatus
+
+dir_refresh:
+	whoami
+	@echo "Run with sudo! (idempotent)"
+	# opcional seria www-data:www-data
+	chown -R postgres:www-data /var/www
+	chown -R postgres:www-data /opt/BKPS
+	chown -R postgres:www-data /opt/gits
+	chown -R postgres:www-data /opt/lock-mkStatus
+	# etc
+	chmod 774 /opt/BKPS # ou 755
+	find /opt/BKPS/* -type d -exec chmod 755 {} \+
+	find /opt/BKPS/* -type f -exec chmod 664 {} \+  # ou 674 ou 655
+	# etc
+	chmod 774 /opt/gits # ou 755
+	find /opt/gits/* -type d -exec chmod 774 {} \+
+	find /opt/gits/* -type f -exec chmod 664 {} \+  # ou 674 ou 655
+	#chmod 755 /opt/gits
+	#chmod -R a-x,a=rX,u+w /opt/gits/*
+	chmod 755 /opt/lock-mkStatus
+	chmod -R a-x,a=rX,u+w /opt/lock-mkStatus/*
