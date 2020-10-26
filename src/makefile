@@ -83,7 +83,7 @@ clean:
 
 # incluir aqui chamadas aos shels interativos para inclusão de datasets
 
-status: status_base status_schEtc status_schProd
+status: status_base status_schEtc status_schProd status_disk_abuse
 
 status_base:
 	psql -c "\l"
@@ -103,6 +103,11 @@ status_schProd:
 	@echo "-- MAIN stable database DL04s_main:"
 	psql dl04s_main -c "\dn"
 
+status_disk_abuse:
+	@echo "-- -- -- CHECK disk abuse -- -- --"
+	du -h /opts/gits
+
+# # #
 dir_ini:
 	whoami
 	@echo "Run with sudo! (idempotent)"
@@ -130,3 +135,15 @@ dir_refresh:
 	#chmod -R a-x,a=rX,u+w /opt/gits/*
 	chmod 755 /opt/lock-mkStatus
 	chmod -R a-x,a=rX,u+w /opt/lock-mkStatus/*
+
+## DOC AND HELP
+#
+#  For chmod help see:
+#    https://chmod-calculator.com/
+#    https://www.pluralsight.com/blog/it-ops/linux-file-permissions
+# ...
+# How to commands
+#  * avoid find by `chmod -R a-x,a=rX,u+w /var/www/html/*`, need to test.
+#  * list all groups by `compgen -g` and all users by `compgen -u`.
+#  * check user`s groups by `groups user_name` (or empty for self).
+#

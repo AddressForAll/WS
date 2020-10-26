@@ -21,7 +21,23 @@ CREATE or replace VIEW api.origin AS       SELECT * FROM optim.origin
 ;
 CREATE or replace VIEW api.origin_content_type AS SELECT * FROM optim.origin_content_type
 ; COMMENT ON VIEW api.origin_content_type
-  IS 'An optim table and Digital Preservation core.'
+  IS 'Content type valid in Origin. An optim table and Digital Preservation core.'
+;
+
+CREATE or replace VIEW api.auth_user AS SELECT * FROM optim.auth_user
+; COMMENT ON VIEW api.auth_user
+  IS 'Authorized user. An optim table and Digital Preservation core.'
+;
+
+----
+CREATE or replace VIEW api.origin_agg1 AS
+  SELECT substr(jurisd_isolabel_ext,1,2) as country,
+         count(*) orig_n_files,
+         round(sum( (fmeta->'size')::bigint )/1000000) orig_mb
+  FROM optim.vw01_origin
+  group by 1
+; COMMENT ON VIEW api.origin_agg1
+  IS 'Aggregating Origin by country-code.'
 ;
 
 -- -- -- -- -- -- -- --
