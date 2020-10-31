@@ -58,3 +58,13 @@ $f$ language SQL IMMUTABLE;
 COMMENT ON FUNCTION pg_tablestruct_dump_totext
   IS 'Extraxcts column descriptors of a table. Used in ingest.fdw_generate_getclone() function. Optional adds to the end.'
 ;
+
+CREATE or replace FUNCTION volat_file_write(
+  msg text, file text, fcontent text, fopt boolean
+) RETURNS text AS $f$
+  -- solves de PostgreSQL problem of the "LAZY COALESCE", as https://stackoverflow.com/a/42405837/287948
+  SELECT msg||'. Content bytes: '|| pg_catalog.pg_file_write(file,fcontent,fopt)::text
+$f$ language SQL volatile;
+COMMENT ON FUNCTION volat_file_write
+  IS 'Do lazy coalesce. To use in a "only write when null" condiction of COALESCE(x,volat_file_write()).'
+;

@@ -105,7 +105,9 @@ status_schProd:
 
 status_disk_abuse:
 	@echo "-- -- -- CHECK disk abuse -- -- --"
-	du -h /opts/gits
+	du -h /opt/gits  | grep -v M  | grep -v K
+	du -h /var/www   | grep -v M  | grep -v K
+	du -h /tmp   | grep -v M  | grep -v K
 
 # # #
 dir_ini:

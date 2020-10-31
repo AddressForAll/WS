@@ -33,6 +33,7 @@ CREATE or replace VIEW api.auth_user AS SELECT * FROM optim.auth_user
 CREATE or replace VIEW api.origin_agg1 AS
   SELECT substr(jurisd_isolabel_ext,1,2) as country,
          count(*) orig_n_files,
+         count(DISTINCT pack_id) orig_n_packs,
          round(sum( (fmeta->'size')::bigint )/1000000) orig_mb
   FROM optim.vw01_origin
   group by 1
@@ -301,3 +302,26 @@ COMMENT ON FUNCTION API.uridisp_vw_core_origin
 
 -- CREATE or replace FUNCTION API.uridisp_vw_core_origins
 -- by ctype, pack or jurisd
+
+---------------------------------
+
+
+CREATE schema crm; -- Customer Relationship Management
+-- gerenciar newsletter e contato/followup com funcionarios, fornecedores e associados do instituto.
+
+CREATE TABLE crm.newsletter_cust (
+  cust_id serial NOT NULL, -- future REFERENCES crm.customer(id)
+  email  text NOT NULL PRIMARY KEY  CHECK(email=trim(lower(email)) AND length(email)>3 AND position('@' in email)>1),
+  signature_date timestamp not NULL DEFAULT now(),
+  is_valid boolean default false, -- valid string email and domain exists
+  confirmed boolean default false -- acceptd by email-response of email-owner
+);
+
+CREATE or replace FUNCTION API.newsletter_email_ins(p_email text) RETURNS int AS $f$
+  INSERT INTO crm.newsletter_cust(email) VALUES(trim(lower(p_email)))
+  ON CONFLICT DO NOTHING
+  RETURNING cust_id
+$f$ language SQL;
+COMMENT ON FUNCTION API.apiroot
+ IS 'Insere email na tabela crm.newsletter_cust.'
+;

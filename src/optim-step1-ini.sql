@@ -84,6 +84,7 @@ CREATE TABLE optim.origin_content_type(
   score text           -- avaliação de preferência
   ,UNIQUE(label)
 );
+-- obter via CSV os dados deste git, ou fazer dump para manter aqui completo.
 INSERT INTO optim.origin_content_type VALUES
   (1,'PL1','Point Lot via_name housenumber','',TRUE,'perfect'),
   (2,'PL1s','Point Lot id','id via_name housenumber',TRUE,'perfect'), -- separated
@@ -106,6 +107,8 @@ INSERT INTO optim.origin_content_type VALUES
   (104,'eixos','?','?',null,'bad')
 ;
 /*
+insert into optim.origin_content_type (id,label ,model_geo,model_septable,is_useful,score) VALUES (200,'_preservation','(preserv)','(preserv)',true,'god');
+
 INSERT INTO optim.origin_content_type VALUES
   (131,'transporte_publico','Rotas do transporte publico','?',FALSE,'bad'),
   (132,'license','Declaracao de licenca de uso do dado','?',FALSE,'bad'),
