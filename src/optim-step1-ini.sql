@@ -25,14 +25,16 @@ CREATE TABLE IF NOT EXISTS optim.jurisdiction ( -- only current
   jurisd_base_id int NOT NULL,  -- ISO3166-1-numeric COUNTRY ID (e.g. Brazil is 76) or negative for non-iso (ex. oceans)
   jurisd_local_id int   NOT NULL, -- numeric official ID like IBGE_ID of BR jurisdiction.
   -- for example BR's ACRE is 12 and its cities are {1200013, 1200054,etc}.
-  name    text  NOT NULL CHECK(length(name)<60), -- city name for admin-level3 (OSM level=?)
+  parent_id bigint references optim.jurisdiction(osm_id), -- null for INT.
+  admin_level smallint NOT NULL CHECK(admin_level>0 AND admin_level<100), -- 2=country (e.g. BR), at BR: 4=UFs, 8=municipios.
+  name    text  NOT NULL CHECK(length(name)<60), -- city name for admin_level=8.
   parent_abbrev   text  NOT NULL, -- state is admin-level2, country level1
   abbrev text  CHECK(length(abbrev)>=2 AND length(abbrev)<=5), -- ISO and other abbreviations
   wikidata_id  bigint,  --  from '^Q\d+'
   lexlabel     text NOT NULL,  -- cache from name; e.g. 'sao.paulo'.
   isolabel_ext text NOT NULL,  -- cache from parent_abbrev (ISO) and name (camel case); e.g. 'BR-SP-SaoPaulo'.
   ddd          integer, -- Direct distance dialing
-  info JSONb -- admin_level, creation, extinction, postalCode_ranges, notes, etc.
+  info JSONb -- creation, extinction, postalCode_ranges, notes, etc.
   ,UNIQUE(isolabel_ext)
   ,UNIQUE(wikidata_id)
   ,UNIQUE(jurisd_base_id,jurisd_local_id)
@@ -40,6 +42,8 @@ CREATE TABLE IF NOT EXISTS optim.jurisdiction ( -- only current
   ,UNIQUE(jurisd_base_id,parent_abbrev,lexlabel)
   ,UNIQUE(jurisd_base_id,parent_abbrev,abbrev)
 );
+
+optim.jurisdiction set =2
 
 CREATE TABLE optim.donor (
   id serial NOT NULL primary key,
@@ -159,6 +163,7 @@ CREATE VIEW optim.vw01_origin AS
   SELECT o.*,
          j.name as jurisd_name,         j.parent_abbrev as jurisd_state, -- corrigir para jurisd_parent_abbrev
          j.abbrev AS jurisd_abbrev3,    j.isolabel_ext AS jurisd_isolabel_ext,
+         j.jurisd_base_id,  j.parent_id as jurisd_parent_id, j.admin_level AS jurisd_admin_level,
          p.donor_id, p.user_resp,
          d.vat_id AS donor_vat_id,     d.shortname AS donor_shortname,
          d.legalName AS donor_legalName, d.url AS donor_url,
@@ -356,7 +361,7 @@ CREATE or replace FUNCTION optim.fdw_wgets_refresh(
   -- falta UPDATE jurisdiction e retornarc COUNTs! https://stackoverflow.com/a/25941849/287948
   -- mudar para PLpgSQL e usar `GET DIAGNOSTICS my_var_tab = ROW_COUNT` a cada upsert.
   INSERT INTO optim.jurisdiction
-    SELECT * FROM tmp_orig.fdw_jurisdiction_br
+    SELECT * FROM tmp_orig.fdw_jurisdiction_br -- see
     ON CONFLICT DO NOTHING
   ; -- ok
   INSERT INTO optim.donor

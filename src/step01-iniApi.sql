@@ -1,7 +1,10 @@
 CREATE SCHEMA IF NOT EXISTS api;
 
+-- NOTE. Don`t use "vw" prefix on API.viewName because all are VIEWS.
+
 -- -- -- -- -- -- -- -- -- -- --
 -- DIRECT clones of core tables.
+
 
 CREATE or replace VIEW api.jurisdiction AS SELECT * FROM optim.jurisdiction
 ; COMMENT ON VIEW api.jurisdiction
@@ -30,15 +33,48 @@ CREATE or replace VIEW api.auth_user AS SELECT * FROM optim.auth_user
 ;
 
 ----
-CREATE or replace VIEW api.origin_agg1 AS
-  SELECT substr(jurisd_isolabel_ext,1,2) as country,
-         count(*) orig_n_files,
-         count(DISTINCT pack_id) orig_n_packs,
-         round(sum( (fmeta->'size')::bigint )/1000000) orig_mb
+CREATE VIEW api.origin_agg1 AS
+  SELECT jurisd_base_id, substr(jurisd_isolabel_ext, 1, 2) AS country,
+   count(*) AS orig_n_files,
+   count(DISTINCT vw01_origin.pack_id) AS orig_n_packs,
+   COUNT(*)                 n_files,
+   COUNT(DISTINCT pack_id)  n_packs,
+   COUNT(DISTINCT jurisd_osm_id)        n_jurisds,
+   round(sum((vw01_origin.fmeta -> 'size'::text)::bigint) / 1000000::numeric) AS orig_mb
   FROM optim.vw01_origin
-  group by 1
+  GROUP BY 1,2
+  ORDER BY 2
 ; COMMENT ON VIEW api.origin_agg1
-  IS 'Aggregating Origin by country-code.'
+  IS '(temporary, rename to agg1country_origin) Aggregating Origin by country-code.'
+;
+---
+
+CREATE VIEW api.vw_jurisd_origin AS
+  SELECT jurisd_base_id, jurisd_state,jurisd_admin_level,
+    COUNT(*)                 n_files,
+    COUNT(DISTINCT pack_id)  n_packs,
+    COUNT(DISTINCT donor_id) n_donors,
+    COUNT(DISTINCT jurisd_osm_id)        n_jurisds,
+    SUM((fmeta->'size')::int)::bigint as bytes
+   FROM optim.vw01_origin
+   -- WHERE =8
+  GROUP BY 1,2,3
+  ORDER BY 1,3,2
+; COMMENT ON VIEW api.vw_jurisd_origin
+  IS 'Temporaria, renomear para agg2jurisd_origin.'
+;
+
+CREATE VIEW api.vw_donors_origin AS
+  SELECT donor_id, donor_shortname, donor_legalname,
+     COUNT(*)                 n_files,
+     COUNT(DISTINCT pack_id)  n_packs,
+     COUNT(DISTINCT jurisd_osm_id)        n_jurisds,
+     SUM((fmeta->'size')::int)::bigint as bytes
+    FROM optim.vw01_origin
+   GROUP BY 1,2,3
+   ORDER BY donor_shortname
+; COMMENT ON VIEW api.vw_donors_origin
+  IS 'Temporaria, renomear para agg3donors_origin.'
 ;
 
 -- -- -- -- -- -- -- --
@@ -194,7 +230,8 @@ CREATE or replace FUNCTION API.uridisp_vw_core_jurisdiction(
           WHEN t1.p[1]~'^isolabel_ext\.lk\..+$'  THEN upper(t2.isolabel_ext) LIKE (upper(substr(t1.p[1],17))||'%')
           WHEN t1.p[1]~'^parent_abbrev\.lk\..+$' THEN
             t2.isolabel_ext LIKE (upper(substr(t1.p[1],18))||'%') and t2.parent_abbrev=upper(substr(t1.p[1],18))
-          WHEN t1.p[1]~'^parent_abbrev\.eq\..+$' THEN t2.parent_abbrev = upper(substr(t1.p[1],18))
+            -- AND admin_level=8?
+          WHEN t1.p[1]~'^parent_abbrev\.eq\..+$' THEN t2.parent_abbrev = upper(substr(t1.p[1],18)) -- AND admin_level=8?
           -- retorna item exato:
           WHEN t1.p[1] LIKE 'br-__-___' THEN
                t2.abbrev=upper(substr(t1.p[1],7))
@@ -285,6 +322,7 @@ CREATE or replace FUNCTION API.uridisp_vw_core_origin(
           WHEN t1.p[1] LIKE 'donor_id.eq._%'            THEN t2.donor_id=substr(t1.p[1],13)::int
           WHEN t1.p[1] LIKE 'donor_shortname.eq._%'     THEN t2.donor_shortname=upper(substr(t1.p[1],20))
           WHEN t1.p[1] LIKE 'jurisd_state.eq._%' THEN
+            -- AND admin_level=8?
             t2.jurisd_isolabel_ext LIKE ('__-'||upper(substr(t1.p[1],17))||'%') and t2.jurisd_state=upper(substr(t1.p[1],17))
           -- one ITEM:
           WHEN t1.p[1]~'^\d+$'  THEN t2.id=(t1.p[1])::int
@@ -304,7 +342,6 @@ COMMENT ON FUNCTION API.uridisp_vw_core_origin
 -- by ctype, pack or jurisd
 
 ---------------------------------
-
 
 CREATE schema crm; -- Customer Relationship Management
 -- gerenciar newsletter e contato/followup com funcionarios, fornecedores e associados do instituto.
