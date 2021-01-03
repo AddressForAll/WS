@@ -4,7 +4,9 @@
 
 ## -- -- VARS -- --
 
-iniExts  = "CREATE EXTENSION IF NOT EXISTS hstore; CREATE EXTENSION IF NOT EXISTS postgis;"
+pg_io   =/tmp/pg_io
+pg_uri  =postgres://postgres@localhost
+iniExts ="CREATE EXTENSION IF NOT EXISTS hstore; CREATE EXTENSION IF NOT EXISTS postgis;"
 
 ## -- -- RULES -- --
 
@@ -13,14 +15,14 @@ ini_all: ini_database_list_tmp ini_step1 ini_step2 ini_step3_api ini_step4_optim
 ini_tmprefresh:
 	whoami
 	@echo "Run with sudo! (idempotent)"
-	mkdir -p /tmp/pg_io
-	mkdir -p /tmp/pg_io/digital-preservartion-XX
-	chmod -R 776  /tmp/pg_io
-	chown -R postgres:postgres /tmp/pg_io/
+	mkdir -p $(pg_io)
+	mkdir -p $(pg_io)/digital-preservartion-XX
+	chmod -R 776  $(pg_io)
+	chown -R postgres:postgres $(pg_io)/
 	touch /opt/lock-mkStatus/tmp-makeStep00.~feito
 
 ini_database_list_tmp: /opt/lock-mkStatus/tmp-makeStep00.~feito  # not sudor
-	psql -lqt | cut -d \| -f 1 > /tmp/pg_io/database_list_tmp.txt
+	psql -lqt | cut -d \| -f 1 > $(pg_io)/database_list_tmp.txt
 
 ini_step1: ini_database_list_tmp
 	rm /opt/lock-mkStatus/*~feito
@@ -28,14 +30,14 @@ ini_step1: ini_database_list_tmp
 	touch /opt/lock-mkStatus/WS-makeStep01.~feito
 
 ini_step2: ini_step1 /opt/lock-mkStatus/WS-makeStep01.~feito
-	psql dl03t_main -c "CREATE SCHEMA IF NOT EXISTS Optim"
-	psql dl03t_main -c $(iniExts)
-	psql ingest1    -c $(iniExts)
-	psql ingest2    -c $(iniExts)
+	psql $(pg_uri)/dl03t_main -c "CREATE SCHEMA IF NOT EXISTS Optim"
+	psql $(pg_uri)/dl03t_main -c $(iniExts)
+	psql $(pg_uri)/ingest1    -c $(iniExts)
+	psql $(pg_uri)/ingest2    -c $(iniExts)
 	touch /opt/lock-mkStatus/WS-makeStep02.~feito
 
 ini_step3_api: /opt/lock-mkStatus/WS-makeStep02.~feito
-	psql dl03t_main < step01-iniApi.sql
+	psql $(pg_uri)/dl03t_main < step01-iniApi.sql
 
 ini_step4_optim: ini_step4_terms /opt/lock-mkStatus/WS-makeStep02.~feito
 	@echo "Creating optim schema and its libs at DL03t_main database"
@@ -52,9 +54,10 @@ ini_step6_pgrestUp: dkr_03t_main dkr_04s_main
 optim_step1: optim-step1-ini.sql /opt/lock-mkStatus/WS-makeStep02.~feito
 	@echo "Schema optim, core initialization (só roda com usuário sudo -u postgres)"
 	psql dl03t_main < pubLib.sql
+	psql dl03t_main < ingest-step1-ini.sql
 	psql dl03t_main < optim-step1-ini.sql
 	# bug pois só roda via "sudo su postgres"
-	sh /tmp/pg_io/run_wgets-all.sh
+	sh $(pg_io)/run_wgets-all.sh
 	psql dl03t_main < optim-step2-ins.sql
 
 ## DOCKER RULES:
@@ -77,7 +80,7 @@ dkr_refresh_dl04: /opt/gits/WS/src/docker-compose.yml
 ## clean all? or by prefix ini_clean, etc.?
 clean:
 	@echo "Cleaning up..."
-	rm /tmp/pg_io/database_list_tmp.txt
+	rm $(pg_io)/database_list_tmp.txt
 
 ## -- -- AFTER ALL -- --
 

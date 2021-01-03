@@ -2,6 +2,9 @@
  * Public library for dl03t_main and other databases.
  */
 
+CREATE extension IF NOT EXISTS adminpack;
+
+
 CREATE or replace FUNCTION iIF(
     condition boolean,       -- IF condition
     true_result anyelement,  -- THEN
@@ -14,70 +17,6 @@ COMMENT ON FUNCTION iif
   IS 'Immediate IF. Sintax sugar for the most frequent CASE WHEN THEN ELSE END.'
 ;
 
--- -- -- -- -- -- -- -- -- -- --
--- FILE SYSTEM helper functions:
-
-CREATE or replace FUNCTION pg_read_file(f text, missing_ok boolean) RETURNS text AS $$
-  SELECT pg_read_file(f,0,922337203,missing_ok) -- max. of ~800 Mb or 880 MiB = 0.86 GiB
-   -- GAMBI, ver https://stackoverflow.com/q/63299550/287948
-   -- ou usar jsonb_read_stat_file()
-$$ LANGUAGE SQL IMMUTABLE;
-COMMENT ON FUNCTION jsonb_read_stat_file(text,boolean)
-  IS 'Simplified pg_read_file(). For GeoJSON preffer jsonb_read_stat_file(). DANGER FOR BIG FILES, please review it.'
-;
-
-
-CREATE or replace FUNCTION jsonb_read_stat_file(
-  f text,
-  missing_ok boolean DEFAULT false
-) RETURNS JSONb AS $f$
-  SELECT j || jsonb_build_object( 'file',f,  'content',pg_read_file(f) )
-  FROM to_jsonb( pg_stat_file(f,missing_ok) ) t(j)
-  WHERE j IS NOT NULL
-$f$ LANGUAGE SQL IMMUTABLE;
-COMMENT ON FUNCTION jsonb_read_stat_file(text,boolean)
-  IS 'Same as pg_read_file() but augmented with JSONb parse and pg_stat_file() metadata.'
-;
-
-CREATE or replace FUNCTION volat_file_write(
-  msg text, file text, fcontent text, fopt boolean
-) RETURNS text AS $f$
-  -- solves de PostgreSQL problem of the "LAZY COALESCE", as https://stackoverflow.com/a/42405837/287948
-  SELECT msg||'. Content bytes: '|| pg_catalog.pg_file_write(file,fcontent,fopt)::text
-$f$ language SQL volatile;
-COMMENT ON FUNCTION volat_file_write
-  IS 'Do lazy coalesce. To use in a "only write when null" condiction of COALESCE(x,volat_file_write()).'
-;
-
--- -- -- -- -- -- -- -- -- -- -- -- --
--- Catalog's Regclass helper functions
-
-CREATE or replace FUNCTION pg_tablestruct_dump_totext(
-  p_tabname text, p_ignore text[] DEFAULT NULL, p_add text[] DEFAULT NULL
-) RETURNS text[]  AS $f$
-  SELECT array_agg(col||' '||datatype) || COALESCE(p_add,array[]::text[])
-  FROM (
-    SELECT -- attrelid::regclass AS tbl,
-           attname            AS col
-         , atttypid::regtype  AS datatype
-    FROM   pg_attribute
-    WHERE  attrelid = p_tabname::regclass  -- table name, optionally schema-qualified
-    AND    attnum > 0
-    AND    NOT attisdropped
-    AND    ( p_ignore IS null OR NOT(attname=ANY(p_ignore)) )
-    ORDER  BY attnum
-  ) t
-$f$ language SQL IMMUTABLE;
-COMMENT ON FUNCTION pg_tablestruct_dump_totext
-  IS 'Extraxcts column descriptors of a table. Used in ingest.fdw_generate_getclone() function. Optional adds to the end.'
-;
-
-CREATE or replace FUNCTION lexname_to_unix(p_lexname text) RETURNS text AS $$
-  SELECT string_agg(initcap(p),'') FROM regexp_split_to_table($1,'\.') t(p)
-$$ LANGUAGE SQL IMMUTABLE;
-COMMENT ON FUNCTION lexname_to_unix(text)
-  IS 'Convert URN LEX jurisdiction string to camel-case filename for Unix-like file systems.'
-;
 
 -- -- -- -- -- -- -- -- -- -- --
 -- Complementar CAST functions:
@@ -137,4 +76,107 @@ CREATE or replace FUNCTION jsonb_array_totext(jsonb) RETURNS text[] AS $f$
 $f$ LANGUAGE sql IMMUTABLE;
 COMMENT ON FUNCTION json_array_totext(json)
   IS 'Cast JSONb-array to text-array. See https://stackoverflow.com/q/45243186/287948'
+;
+
+CREATE or replace FUNCTION  jsonb_keys_to_vals(
+  j jsonb, keys text[]
+) RETURNS jsonb AS $f$
+  SELECT jsonb_agg(j->x) FROM unnest(keys) t(x)
+$f$ LANGUAGE SQL IMMUTABLE;
+
+-- -- -- -- -- -- -- -- -- -- --
+-- FILE SYSTEM helper functions:
+
+CREATE or replace FUNCTION pg_read_file(f text, missing_ok boolean) RETURNS text AS $$
+  SELECT pg_read_file(f,0,922337203,missing_ok) -- max. of ~800 Mb or 880 MiB = 0.86 GiB
+   -- GAMBI, ver https://stackoverflow.com/q/63299550/287948
+   -- ou usar jsonb_read_stat_file()
+$$ LANGUAGE SQL IMMUTABLE;
+COMMENT ON FUNCTION jsonb_read_stat_file(text,boolean)
+  IS 'Simplified pg_read_file(). For GeoJSON preffer jsonb_read_stat_file(). DANGER FOR BIG FILES, please review it.'
+;
+
+CREATE or replace FUNCTION jsonb_read_stat_file(
+  f text,
+  missing_ok boolean DEFAULT false
+) RETURNS JSONb AS $f$
+  SELECT j || jsonb_build_object( 'file',f,  'content',pg_read_file(f) )
+  FROM to_jsonb( pg_stat_file(f,missing_ok) ) t(j)
+  WHERE j IS NOT NULL
+$f$ LANGUAGE SQL IMMUTABLE;
+COMMENT ON FUNCTION jsonb_read_stat_file(text,boolean)
+  IS 'Same as pg_read_file() but augmented with JSONb parse and pg_stat_file() metadata.'
+;
+
+CREATE or replace FUNCTION volat_file_write(
+  msg text, file text, fcontent text, fopt boolean
+) RETURNS text AS $f$
+  -- solves de PostgreSQL problem of the "LAZY COALESCE", as https://stackoverflow.com/a/42405837/287948
+  SELECT msg||'. Content bytes: '|| pg_catalog.pg_file_write(file,fcontent,fopt)::text
+$f$ language SQL volatile;
+COMMENT ON FUNCTION volat_file_write
+  IS 'Do lazy coalesce. To use in a "only write when null" condiction of COALESCE(x,volat_file_write()).'
+;
+
+-- handling of CSV files and its heders:
+
+CREATE or replace FUNCTION pg_csv_head(
+  filename text,                 -- the CSV file
+  separator text default ',',    -- the CSV separator
+  linesize bigint default 9000   -- header maximum size in UTF8 characteres.
+) RETURNS text[] AS $f$
+  SELECT regexp_split_to_array(s, separator)
+  FROM regexp_split_to_table(  pg_read_file(filename,0,linesize,true),  E'\n') t(s)
+  LIMIT 1
+$f$ LANGUAGE SQL IMMUTABLE;
+COMMENT ON FUNCTION pg_csv_head(text,text,bigint)
+  IS 'Devolve array do header de um arquivo CSV com separador estrito, lendo apenas primeiros bytes.'
+;
+
+CREATE or replace FUNCTION  pg_csv_head_tojsonb(
+  filename text, tolower boolean = false,
+  separator text = ',', linesize bigint = 9000,
+  is_idx_json boolean = true
+) RETURNS jsonb AS $f$
+    SELECT  jsonb_object_agg(
+      trim( CASE WHEN tolower THEN lower(x) ELSE x END, ' "' ),
+      ordinality - CASE WHEN is_idx_json THEN 1 ELSE 0 END
+    )
+    FROM unnest( pg_csv_head($1,$3,$4) ) WITH ORDINALITY x
+$f$ LANGUAGE SQL IMMUTABLE;
+-- exemplo, select x from pg_csv_head_tojsonb('/tmp/pg_io/ENDERECO.csv') t(x);
+-- ver /home/igor/BR-MG-BeloHorizonte/_pk012/_preservation/makefile
+--
+-- select jsonb_keys_to_vals(x,array['SIGLA_TIPO_LOGRADOURO','NOME_LOGRADOURO','NUMERO_IMOVEL','LETRA_IMOVEL','GEOMETRIA'])
+-- from pg_csv_head_tojsonb('/tmp/pg_io/ENDERECO.csv') t(x);
+
+
+-- -- -- -- -- -- -- -- -- -- -- -- --
+-- Catalog's Regclass helper functions
+
+CREATE or replace FUNCTION pg_tablestruct_dump_totext(
+  p_tabname text, p_ignore text[] DEFAULT NULL, p_add text[] DEFAULT NULL
+) RETURNS text[]  AS $f$
+  SELECT array_agg(col||' '||datatype) || COALESCE(p_add,array[]::text[])
+  FROM (
+    SELECT -- attrelid::regclass AS tbl,
+           attname            AS col
+         , atttypid::regtype  AS datatype
+    FROM   pg_attribute
+    WHERE  attrelid = p_tabname::regclass  -- table name, optionally schema-qualified
+    AND    attnum > 0
+    AND    NOT attisdropped
+    AND    ( p_ignore IS null OR NOT(attname=ANY(p_ignore)) )
+    ORDER  BY attnum
+  ) t
+$f$ language SQL IMMUTABLE;
+COMMENT ON FUNCTION pg_tablestruct_dump_totext
+  IS 'Extraxcts column descriptors of a table. Used in ingest.fdw_generate_getclone() function. Optional adds to the end.'
+;
+
+CREATE or replace FUNCTION lexname_to_unix(p_lexname text) RETURNS text AS $$
+  SELECT string_agg(initcap(p),'') FROM regexp_split_to_table($1,'\.') t(p)
+$$ LANGUAGE SQL IMMUTABLE;
+COMMENT ON FUNCTION lexname_to_unix(text)
+  IS 'Convert URN LEX jurisdiction string to camel-case filename for Unix-like file systems.'
 ;

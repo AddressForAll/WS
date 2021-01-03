@@ -1,18 +1,11 @@
-
 -- OPTIM STEP1
 -- Inicialização do Módulo principal de dados AddressForAll.
---
+-- Dependencias: pubLib.sql ingest-step1-ini.sql
 
 CREATE extension IF NOT EXISTS postgis;
-CREATE extension IF NOT EXISTS adminpack;
-
-CREATE EXTENSION IF NOT EXISTS file_fdw;
-CREATE SERVER    IF NOT EXISTS files FOREIGN DATA WRAPPER file_fdw;
 
 CREATE schema    IF NOT EXISTS api;
-CREATE schema    IF NOT EXISTS ingest;
 CREATE schema    IF NOT EXISTS optim;
-CREATE schema    IF NOT EXISTS tmp_orig;
 
 -- -- -- -- -- -- -- -- --
 -- inicializações OPTIM:
@@ -42,8 +35,6 @@ CREATE TABLE IF NOT EXISTS optim.jurisdiction ( -- only current
   ,UNIQUE(jurisd_base_id,parent_abbrev,lexlabel)
   ,UNIQUE(jurisd_base_id,parent_abbrev,abbrev)
 );
-
-optim.jurisdiction set =2
 
 CREATE TABLE optim.donor (
   id serial NOT NULL primary key,
@@ -231,57 +222,6 @@ CREATE TRIGGER check_kx_vat_id
 -- -- --
 -- SQL and bash generators (optim-ingest submodule)
 
-CREATE or replace FUNCTION optim.fdw_generate(
-  p_name text,  -- name or target-table name
-  p_jurisd_abbrev text DEFAULT 'br',  -- or null
-  p_schemaname text DEFAULT 'optim',
-  p_columns text[] DEFAULT NULL,
-  p_path text DEFAULT NULL  -- default based on ids
-) RETURNS text  AS $f$
-DECLARE
- fdwname text;
- fpath text;
- f text;
-BEGIN
- fpath := COALESCE(p_path,'/tmp/pg_io'); -- /tmp/pg_io/digital-preservation-XX
- f := concat(fpath,'/', iIF(p_jurisd_abbrev IS NULL,'',p_jurisd_abbrev||'-'), p_name, '.csv');
- p_jurisd_abbrev := iIF(p_jurisd_abbrev IS NULL, '', '_'|| p_jurisd_abbrev);
- fdwname := 'tmp_orig.fdw_'|| iIF(p_schemaname='optim', '', p_schemaname||'_') || p_name || p_jurisd_abbrev;
- -- poderia otimizar por chamada (alter table option filename), porém não é paralelizável.
- EXECUTE
-    format(
-      'DROP FOREIGN TABLE IF EXISTS %s; CREATE FOREIGN TABLE %s (%s)',
-       fdwname, fdwname, array_to_string(p_columns,',')
-     ) || format(
-       'SERVER files OPTIONS (filename %L, format %L, header %L, delimiter %L)',
-       f, 'csv', 'true', ','
-    );
-    return ' '|| fdwname || E' was created!\n source: '||f|| ' ';
-END;
-$f$ language PLpgSQL;
-COMMENT ON FUNCTION optim.fdw_generate
-  IS 'Generates a structure FOREIGN TABLE for ingestion.'
-;
-
-CREATE or replace FUNCTION optim.fdw_generate_getclone(
-  -- foreign-data wrapper generator
-  p_tablename text,  -- cloned-table name
-  p_jurisd_abbrev text DEFAULT 'br',  -- or null
-  p_schemaname text DEFAULT 'optim',
-  p_ignore text[] DEFAULT NULL, -- colunms to be ignored.
-  p_add text[] DEFAULT NULL, -- colunms to be added.
-  p_path text DEFAULT NULL  -- default based on ids
-) RETURNS text  AS $wrap$
-  SELECT optim.fdw_generate(
-    $1,$2,$3,
-    pg_tablestruct_dump_totext(p_schemaname||'.'||p_tablename,p_ignore,p_add),
-    p_path
-  )
-$wrap$ language SQL;
-COMMENT ON FUNCTION optim.fdw_generate_getclone
-  IS 'Generates a clone-structure FOREIGN TABLE for ingestion.'
-;
-
 CREATE or replace FUNCTION optim.fdw_wgets_script(
    -- first step is to wget
    p_subset text DEFAULT '', -- ''='all' and 'refresh'.
@@ -328,8 +268,8 @@ $f$ language SQL immutable;
 -- Pre-insert (generating FDWs)
 
 \echo E'\n --- FDW para ingestão de dados do git ---'
-SELECT optim.fdw_generate_getclone('jurisdiction', 'br', 'optim', null,null, '/tmp/pg_io/digital-preservation-XX');
-SELECT optim.fdw_generate(
+SELECT ingest.fdw_generate_getclone('jurisdiction', 'br', 'optim', null,null, '/tmp/pg_io/digital-preservation-XX');
+SELECT ingest.fdw_generate(
   'donatedPack',  'br', 'optim',
   array[
     'pack_id int',        'donor_id int',         'donor_label text',
@@ -341,7 +281,7 @@ SELECT optim.fdw_generate(
   '/tmp/pg_io/digital-preservation-XX'
 ); -- creates tmp_orig.fdw_donatedPack_br
 
-SELECT optim.fdw_generate(
+SELECT ingest.fdw_generate(
   -- usando ordem dos campos confirme git
   'donor',  'br', 'optim',
   array[
@@ -394,9 +334,9 @@ CREATE or replace FUNCTION optim.fdw_wgets_refresh(
   SELECT 'OK, inserted new itens at jurisdiction, donor and donatedPack. ';
 $f$ language SQL;
 
--- falta   SELECT optim.fdw_generate_getclone('origin_content_type', NULL, 'optim');
+-- falta   SELECT ingest.fdw_generate_getclone('origin_content_type', NULL, 'optim');
 /* deu pau pois inverte ordem do CSV
-PREPARE fdw_gen(text) AS SELECT optim.fdw_generate_getclone($1, 'br', 'optim', array['info'],null, '/tmp/pg_io/digital-preservation-XX');
+PREPARE fdw_gen(text) AS SELECT ingest.fdw_generate_getclone($1, 'br', 'optim', array['info'],null, '/tmp/pg_io/digital-preservation-XX');
   EXECUTE fdw_gen('donor');         -- creates tmp_orig.fdw_donor_br
   -- (só publica nao ingere) EXECUTE fdw_gen('origin');        -- creates tmp_orig.fdw_origin_br
 -- gera script de download dos dados:
