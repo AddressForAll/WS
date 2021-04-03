@@ -100,7 +100,7 @@ CREATE or replace FUNCTION jsonb_read_stat_file(
   f text,
   missing_ok boolean DEFAULT false
 ) RETURNS JSONb AS $f$
-  SELECT j || jsonb_build_object( 'file',f,  'content',pg_read_file(f) )
+  SELECT j || jsonb_build_object( 'file',f,  'content',pg_read_file(f)::JSONB )
   FROM to_jsonb( pg_stat_file(f,missing_ok) ) t(j)
   WHERE j IS NOT NULL
 $f$ LANGUAGE SQL IMMUTABLE;
