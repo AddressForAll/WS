@@ -108,6 +108,23 @@ COMMENT ON FUNCTION jsonb_read_stat_file(text,boolean)
   IS 'Same as pg_read_file() but augmented with JSONb parse and pg_stat_file() metadata.'
 ;
 
+CREATE or replace FUNCTION geojson_readfile_features(f text) RETURNS TABLE (
+  subfeature_id int, fname text, geojson_type text,
+  subfeature_type text, geom geometry
+) AS $f$
+   WITH jfile AS ( SELECT jsonb_read_stat_file(f) AS j )
+   SELECT (ROW_NUMBER() OVER())::int AS subfeature_id,
+          jfile.j->>'file' AS fname,
+          geojson_type, subfeature->>'type' as subfeature_type,
+          ST_GeomFromGeoJSON(subfeature->'geometry') AS geom
+   FROM (
+      SELECT -- j - 'content' AS file_metadata,
+             j->'content'->>'type' AS geojson_type,
+             jsonb_array_elements(j->'content'->'features') AS subfeature
+      FROM jfile
+   ) t2, jfile
+$f$ LANGUAGE SQL;
+
 CREATE or replace FUNCTION volat_file_write(
   msg text, file text, fcontent text, fopt boolean
 ) RETURNS text AS $f$
