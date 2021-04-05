@@ -92,7 +92,7 @@ CREATE or replace FUNCTION pg_read_file(f text, missing_ok boolean) RETURNS text
    -- GAMBI, ver https://stackoverflow.com/q/63299550/287948
    -- ou usar jsonb_read_stat_file()
 $$ LANGUAGE SQL IMMUTABLE;
-COMMENT ON FUNCTION jsonb_read_stat_file(text,boolean)
+COMMENT ON FUNCTION pg_read_file(text,boolean)
   IS 'Simplified pg_read_file(). For GeoJSON preffer jsonb_read_stat_file(). DANGER FOR BIG FILES, please review it.'
 ;
 
@@ -112,24 +112,40 @@ CREATE or replace FUNCTION geojson_readfile_features(f text) RETURNS TABLE (
   subfeature_id int, fname text, geojson_type text,
   subfeature_type text, properties jsonb, geom geometry
 ) AS $f$
-   WITH jfile AS ( SELECT jsonb_read_stat_file(f) AS j )
    SELECT (ROW_NUMBER() OVER())::int AS subfeature_id,
-          jfile.j->>'file' AS fname,
-          geojson_type, subfeature->>'type' AS subfeature_type,
+          fname, geojson_type, subfeature->>'type' AS subfeature_type,
           subfeature->'properties' AS properties,
           -- ver questão do CRS em https://gis.stackexchange.com/questions/60928/
-          ST_GeomFromGeoJSON(  COALESCE(jsonb_build_object('crs',jfile.j->'content'->'crs'),'{}'::jsonb) || (subfeature->'geometry')  ) AS geom
+          ST_GeomFromGeoJSON(  crs || (subfeature->'geometry')  ) AS geom
    FROM (
-      SELECT -- j - 'content' AS file_metadata,
+      SELECT j->>'file' AS fname,
+             COALESCE(jsonb_build_object('crs',j->'content'->'crs'),'{}'::jsonb) AS crs,
              j->'content'->>'type' AS geojson_type,
              -- j->'content'->>'name' AS geojson_name
              jsonb_array_elements(j->'content'->'features') AS subfeature
-      FROM jfile
-   ) t2, jfile
+      FROM ( SELECT pg_read_file(f) AS j ) jfile
+      -- for meta use: FROM ( SELECT jsonb_read_stat_file(f) AS j ) jfile
+   ) t2
 $f$ LANGUAGE SQL;
 COMMENT ON FUNCTION geojson_readfile_features(text)
   IS 'Reads a GeoJSON file and transforms it into a table with a geometry cols.'
 ;
+           
+CREATE or replace FUNCTION geojson_readfile_features_jgeom(f text) RETURNS TABLE (
+  subfeature_id int, subfeature_type text, properties jsonb, jgeom jsonb
+) AS $f$
+   SELECT (ROW_NUMBER() OVER())::int AS subfeature_id,
+          subfeature->>'type' AS subfeature_type,
+          subfeature->'properties' AS properties,
+          subfeature->'geometry' AS jgeom
+   FROM (
+      SELECT j->'content'->>'type' AS geojson_type,
+             jsonb_array_elements(j->'content'->'features') AS subfeature
+      FROM ( SELECT pg_read_file(f) AS j ) jfile
+   ) t2
+$f$ LANGUAGE SQL;
+           
+
 CREATE or replace FUNCTION volat_file_write(
   msg text, file text, fcontent text, fopt boolean
 ) RETURNS text AS $f$
