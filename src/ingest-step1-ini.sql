@@ -126,44 +126,45 @@ COMMENT ON TABLE ingest.via_line
 ;
 
 ---------
-
 CREATE TABLE ingest.feature_type (  -- replacing old optim.origin_content_type
   ftid smallint PRIMARY KEY NOT NULL,
   ftname text NOT NULL CHECK(lower(ftname)=ftname), -- ftlabel
   geomtype text NOT NULL CHECK(lower(geomtype)=geomtype), -- old model_geo
-  info jsonb, -- description, is_useful, score, model_septable
+  need_complement boolean, -- false=não, true=sim.
+  description text NOT NULL, 
+  info jsonb, -- is_useful, score, model_septable
   UNIQUE (ftname)
 );
-INSERT INTO ingest.feature_type VALUES 
-  (1,'address_full',   'none',     '{"description":"Cadastral address (gid,via_id,via_name,number,postal_code,etc)."}'::jsonb),
-  (2,'address_basic',  'none',     '{"description":"Cadastral address with only via_name and number *and no standard gid for join with geo)."}'::jsonb),
-  (3,'address_cmpl',   'none',     '{"description":"Cadastral address, like address_basic but joining with geoaddress_ext by a gid."}'::jsonb),
+INSERT INTO ingest.feature_type VALUES
+  (0,'address',       'class', null,  'Cadastral address (gid,via_id,via_name,number,postal_code,etc).', NULL),
+  (1,'address_full',  'none', true,   'Cadastral address (gid,via_id,via_name,number,postal_code,etc), joining with geoaddress_ext by a gid.', NULL),
+  (2,'address_noid',  'none', true,   'Cadastral address with some basic metadata but no standard gid for join with geo).', NULL),
+  (3,'address_cmpl',  'none', true,   'Cadastral address, like address_full but .', NULL),
+  (4,'via_cmpl',      'none', true,   'Via line with no metadata', NULL),
   
-  (11,'geoaddress_full',    'point',     '{"description":"Geo_address point with all attributes, via_name and number."}'::jsonb),
-  (12,'geoaddress_extvia',  'point',     '{"description":"Geo_address point with number but external via metadata (at address_cmpl or address_full)."}'::jsonb),
-  (13,'geoaddress_novia',   'point',     '{"description":"Geo_address point with number but no via metadata."}'::jsonb),
-  (14,'geoaddress_ext',     'point',     '{"description":"Geo_address point-only, all metadata external (at address_cmpl or address_full)."}'::jsonb),
-  (15,'geoaddress_none',    'point',     '{"description":"Geo_address point-only, no metadata."}'::jsonb),
+  (10,'geoaddress',         'class', null,  'Geo-address point.', NULL),
+  (11,'geoaddress_full',    'point', false, 'Geo-address point with all attributes, via_name and number.', NULL),
+  (12,'geoaddress_ext',     'point', true,  'Geo-address point with no (or some) metadata, external metadata at address_cmpl or address_full.', NULL),
+  (13,'geoaddress_none',    'point', false, 'Geo-address point-only, no metadata (or no core metadata).', NULL),
 
-  (21,'via_full',       'line',      '{"description":"Via line with official name and optional code, as attributes"}'::jsonb),
-  (22,'via_ext',        'line',      '{"description":"Via line with external metadata"}'::jsonb),
-  (23,'via_none',       'line',      '{"description":"Via line with no metadata"}'::jsonb),
+  (20,'via',           'class', null,  'Via line.', NULL),
+  (21,'via_full',       'line', false, 'Via line with official name and optional code, as attributes', NULL),
+  (22,'via_ext',        'line', true,  'Via line with external metadata', NULL),
+  (23,'via_none',       'line', false, 'Via line with no metadata', NULL),
 
-  (31,'building_full',   'poly',    '{"description":"Building polygon with all attributes, via_name and number."}'::jsonb),
-  (32,'building_extvia', 'poly',    '{"description":"Building polygon with number but external via metadata."}'::jsonb),
-  (33,'building_novia',  'poly',    '{"description":"Building polygon with number but no via metadata."}'::jsonb),
-  (34,'building_ext',    'poly',    '{"description":"Building polygon-only, all metadata external."}'::jsonb),
-  (35,'building_none',   'poly',    '{"description":"Building polygon-only, no metadata."}'::jsonb),
+  (30,'building',        'class', null, 'Building polygon.', NULL),
+  (31,'building_full',   'poly', false, 'Building polygon with all attributes, via_name and number.', NULL),
+  (32,'building_ext',    'poly', true,  'Building polygon with no (or some) metadata, external metadata at address_cmpl or address_full.', NULL),
+  (33,'building_none',   'poly', false, 'Building polygon-only, no metadata (or no core metadata).', NULL),
 
-  (41,'lot_full',   'poly',    '{"description":"Lot polygon with all attributes, main via_name and number."}'::jsonb),
-  (42,'lot_extvia', 'poly',    '{"description":"Lot polygon with main number but external via metadata."}'::jsonb),
-  (43,'lot_novia',  'poly',    '{"description":"Lot polygon with main number but no via metadata."}'::jsonb),
-  (44,'lot_ext',    'poly',    '{"description":"Lot polygon-only, all metadata external."}'::jsonb),
-  (45,'lot_none',   'poly',    '{"description":"Lot polygon-only, no metadata."}'::jsonb),
+  (40,'parcel',        'class', null, 'Land lot (parcel).', NULL),
+  (41,'parcel_full',   'poly', false, 'Land lot (parcel) polygon with all attributes, main via_name and number.', NULL),
+  (42,'parcel_ext',    'poly', true,  'Land lot (parcel) polygon-only, all metadata external.', NULL),
+  (43,'parcel_none',   'poly', false, 'Land lot (parcel) polygon-only, no metadata.', NULL),
 
-  (51,'nsvia_full',   'poly',    '{"description":"Namespace of vias (bairro) polygon with metadata"}'::jsonb),
-  (52,'nsvia_ext',    'poly',    '{"description":"Namespace of vias (bairro) polygon with external metadata"}'::jsonb),
-  (53,'nsvia_none',   'poly',    '{"description":"Namespace of vias (bairro) polygon with no metadata"}'::jsonb)
+  (50,'nsvia',        'class', null, 'Namespace of vias (bairro), a name delimited by a polygon.', NULL),
+  (51,'nsvia_full',   'poly', false, 'Namespace of vias (bairro) polygon with name and optional metadata', NULL),
+  (52,'nsvia_ext',    'poly', true,  'Namespace of vias (bairro) polygon with external metadata', NULL)
 ;
 /* 
  Exemplos de sinônimos:
