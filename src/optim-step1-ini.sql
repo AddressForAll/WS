@@ -57,16 +57,34 @@ CREATE TABLE optim.auth_user (
   info jsonb
 );
 
-CREATE TABLE optim.donatedPack(
-  pack_id int NOT NULL PRIMARY KEY,
+-- nova tabela, exigirá refatoramento e revisão das funções da Eclusa.
+CREATE TABLE optim.donatedPack_commom(   -- parte comum a diversos pacotes, em particular o makefile.
+  -- definir aqui
+  pack_id int,
+  --   donor_id int NOT NULL REFERENCES optim.donor(id),
+  -- etc, tudo aqui.
+  makemodel_id int, -- referẽncia ao make-modelo
+  makefile text, -- coletar no banco de dados? (futura automação com Airflow)
+  makefile_resp text, -- nome do usuário responsável (mesmo depois de colaboração com outros)
+  readme text  --  coletar no banco de dados? (para publicar em outros meios ou fazer busca textual)
+);
+
+-- na interface o ID de pack_commom_id é que conta, e o pack_id fica como float.
+
+CREATE TABLE optim.donatedPack(   -- todo pacote tem uma abertura e um fechamento.
+  pack_id int NOT NULL PRIMARY KEY, -- com trigger conferindo se tem inteiro ref commom, e se .1, .2, etc. estão em sequencia.
+  -- pack_version int NOT NULL DEFAULT 1, -- complementa a primary-kei. ex. "_pk002.2" como pasta "_pk002/v2021-01-04"
+                                          -- a versão1 seria na raiz e as demais versões por data.
+  -- ou bigserial pula de 100 em 100, reserva suficiente ..
   donor_id int NOT NULL REFERENCES optim.donor(id),
-  user_resp text NOT NULL REFERENCES optim.auth_user(username),
-  accepted_date date NOT NULL,
+  user_resp text NOT NULL REFERENCES optim.auth_user(username), -- responsável pelo README e teste do makefile
+  accepted_date date NOT NULL,   -- sem uso? ver optiom.origin
   escopo text NOT NULL, -- bbox or minimum bounding AdministrativeArea
+  -- license?  tirar do info e trazer para REFERENCES licenças.
   about text,
   config_commom jsonb, -- parte da config de ingestão comum a todos os arquivos (ver caso Sampa)
   info jsonb
-  ,UNIQUE(pack_id)
+  ,UNIQUE(pack_id) -- ,pack_version
   ,UNIQUE(donor_id,accepted_date,escopo) -- revisar se precisa.
 ); -- pack é intermediário de agregação
 
@@ -137,6 +155,7 @@ CREATE TABLE optim.origin(
    jurisd_osm_id bigint  NOT NULL REFERENCES optim.jurisdiction(osm_id), -- scope of data, desmembrando arquivos se possível.
    ctype text          NOT NULL REFERENCES optim.origin_content_type(label),  -- .. tipo de entrada que amarra com config!
    pack_id int         NOT NULL REFERENCES optim.donatedPack(pack_id), -- um ou mais origins no mesmo paxck.
+   -- float pack_id.pack_version
    fhash text          NOT NULL, -- sha256 is a finger print
    fname text          NOT NULL,  -- filename
    fversion smallint   NOT NULL DEFAULT 1, -- fname version (counter for same old filename+ctype).

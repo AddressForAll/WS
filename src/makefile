@@ -88,6 +88,12 @@ clean:
 
 status: status_base status_schEtc status_schProd status_disk_abuse
 
+status_docker:
+	@echo "run as super-user:"
+	whoami
+	docker ps -f "status=exited"
+	@echo "restart with 'sudo docker container restart (name)'"
+
 status_base:
 	psql -c "\l"
 
