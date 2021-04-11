@@ -130,51 +130,54 @@ CREATE TABLE ingest.feature_type (  -- replacing old optim.origin_content_type
   ftid smallint PRIMARY KEY NOT NULL,
   ftname text NOT NULL CHECK(lower(ftname)=ftname), -- ftlabel
   geomtype text NOT NULL CHECK(lower(geomtype)=geomtype), -- old model_geo
-  need_complement boolean, -- false=não, true=sim.
-  description text NOT NULL, 
-  info jsonb, -- is_useful, score, model_septable
+  need_join boolean, -- false=não, true=sim, null=both (at class).
+  description text NOT NULL,
+  info jsonb, -- is_useful, score, model_septable, description_pt, description_es, synonymous_pt, synonymous_es
   UNIQUE (ftname)
 );
+-- DELETE FROM ingest.feature_type;
 INSERT INTO ingest.feature_type VALUES
-  (0,'address',       'class', null,  'Cadastral address (gid,via_id,via_name,number,postal_code,etc).', NULL),
+  (0,'address',       'class', null,  'Cadastral address.','{"description_pt":"Endereço cadastral, representação por nome de via e numeração predial.","synonymous_pt":["endereço postal","endereço","planilha dos endereços","cadastro de endereços"]}'::jsonb),
   (1,'address_full',  'none', true,   'Cadastral address (gid,via_id,via_name,number,postal_code,etc), joining with geoaddress_ext by a gid.', NULL),
-  (2,'address_noid',  'none', true,   'Cadastral address with some basic metadata but no standard gid for join with geo).', NULL),
-  (3,'address_cmpl',  'none', true,   'Cadastral address, like address_full but .', NULL),
-  (4,'via_cmpl',      'none', true,   'Via line with no metadata', NULL),
-  
-  (10,'geoaddress',         'class', null,  'Geo-address point.', NULL),
-  (11,'geoaddress_full',    'point', false, 'Geo-address point with all attributes, via_name and number.', NULL),
-  (12,'geoaddress_ext',     'point', true,  'Geo-address point with no (or some) metadata, external metadata at address_cmpl or address_full.', NULL),
-  (13,'geoaddress_none',    'point', false, 'Geo-address point-only, no metadata (or no core metadata).', NULL),
+  (2,'address_cmpl',  'none', true,   'Cadastral address, like address_full with only partial core metadata.', NULL),
+  (3,'address_noid',  'none', false,  'Cadastral address with some basic metadata but no standard gid for join with geo).', NULL),
 
-  (20,'via',           'class', null,  'Via line.', NULL),
-  (21,'via_full',       'line', false, 'Via line with official name and optional code, as attributes', NULL),
-  (22,'via_ext',        'line', true,  'Via line with external metadata', NULL),
-  (23,'via_none',       'line', false, 'Via line with no metadata', NULL),
+  (10,'cadvia',           'class', null,  'Cadastral via (name of via).', '{"description_pt":"Via cadastral (nome de via), complemento da geográfica. Logradouro representado por dados cadastrais apenas.","synonymous_pt":["nomes de logradouro","nomes de rua"]}'::jsonb),
+  (11,'cadvia_cmpl',      'none', true,   'Cadastral via with metadata complementing via_ext (via_cod,via_name).', NULL),
+  (12,'cadvia_noid',      'none', false,   'Via name (and optional metadata) with no ID for join with via_ext.', NULL),
 
-  (30,'building',        'class', null, 'Building polygon.', NULL),
-  (31,'building_full',   'poly', false, 'Building polygon with all attributes, via_name and number.', NULL),
-  (32,'building_ext',    'poly', true,  'Building polygon with no (or some) metadata, external metadata at address_cmpl or address_full.', NULL),
-  (33,'building_none',   'poly', false, 'Building polygon-only, no metadata (or no core metadata).', NULL),
+  (20,'geoaddress',         'class', null,  'Geo-address point.', '{"description_pt":"Geo-endereço. Representação geográfica do endereço, como ponto.","synonymous_pt":["geo-endereço","ponto de endereço","endereço georreferenciado","ponto de endereçamento postal"]}'::jsonb),
+  (21,'geoaddress_full',    'point', false, 'Geo-address point with all attributes, via_name and number.', NULL),
+  (22,'geoaddress_ext',     'point', true,  'Geo-address point with no (or some) metadata, external metadata at address_cmpl or address_full.', NULL),
+  (23,'geoaddress_none',    'point', false, 'Geo-address point-only, no metadata (or no core metadata).', NULL),
 
-  (40,'parcel',        'class', null, 'Land lot (parcel).', NULL),
-  (41,'parcel_full',   'poly', false, 'Land lot (parcel) polygon with all attributes, main via_name and number.', NULL),
-  (42,'parcel_ext',    'poly', true,  'Land lot (parcel) polygon-only, all metadata external.', NULL),
-  (43,'parcel_none',   'poly', false, 'Land lot (parcel) polygon-only, no metadata.', NULL),
+  (30,'via',           'class', null,  'Via line.', '{"description_pt":"Eixo de via. Logradouro representado por linha central, com nome oficial e codlog opcional.","synonymous_pt":["eixo de logradouro","ruas"]}'::jsonb),
+  (31,'via_full',       'line', false, 'Via line, with all metadata (official name, optional code and others)', NULL),
+  (32,'via_ext',        'line', true,  'Via line, with external metadata at cadvia_cmpl', NULL),
+  (33,'via_none',       'line', false, 'Via line with no metadata', NULL),
 
-  (50,'nsvia',        'class', null, 'Namespace of vias (bairro), a name delimited by a polygon.', NULL),
-  (51,'nsvia_full',   'poly', false, 'Namespace of vias (bairro) polygon with name and optional metadata', NULL),
-  (52,'nsvia_ext',    'poly', true,  'Namespace of vias (bairro) polygon with external metadata', NULL)
+  (40,'genericvia',           'class', null,  'Generic-via line. Complementar parcel and block divider: railroad, waterway or other.', '{"description_pt":"Via complementar generalizada. Qualquer linha divisora de lotes e quadras: rios, ferrovias, etc. Permite gerar a quadra generalizada.","synonymous_pt":["hidrovia","ferrovia","limite de município"]}'::jsonb),
+  (41,'genericvia_full',       'line', false, 'Generic-via line, with all metadata (type, official name, optional code and others)', NULL),
+  (42,'genericvia_ext',        'line', true,  'Generic-via line, with external metadata', NULL),
+  (43,'genericvia_none',       'line', false, 'Generic-via line with no metadata', NULL),
+
+  (50,'building',        'class', null, 'Building polygon.', '{"description_pt":"Polígono de edificação.","synonymous_pt":["construções","construção"]}'::jsonb),
+  (51,'building_full',   'poly', false, 'Building polygon with all attributes, via_name and number.', NULL),
+  (52,'building_ext',    'poly', true,  'Building polygon with no (or some) metadata, external metadata at address_cmpl or address_full.', NULL),
+  (53,'building_none',   'poly', false, 'Building polygon-only, no metadata (or no core metadata).', NULL),
+
+  (60,'parcel',        'class', null, 'Parcel polygon (land lot).', '{"description_pt":"Polígono de lote.","synonymous_pt":["lote","parcela","terreno"]}'::jsonb),
+  (61,'parcel_full',   'poly', false, 'Parcel polygon with all attributes, its main via_name and number.', NULL),
+  (62,'parcel_ext',    'poly', true,  'Parcel polygon-only, all metadata external.', NULL),
+  (63,'parcel_none',   'poly', false, 'Parcel polygon-only, no metadata.', NULL),
+
+  (70,'nsvia',        'class', null, 'Namespace of vias, a name delimited by a polygon.', '{"description_pt":"Espaço-de-nomes para vias, um nome delimitado por polígono. Tipicamente nome de bairro ou de loteamento. Complementa o nome de via em nomes duplicados (repetidos dentro do mesmo município mas não dentro do mesmo nsvia).","synonymous_pt":["bairro","loteamento"]}'::jsonb),
+  (71,'nsvia_full',   'poly', false, 'Namespace of vias polygon with name and optional metadata', NULL),
+  (72,'nsvia_ext',    'poly', true,  'Namespace of vias polygon with external metadata', NULL)
 ;
-/* 
- Exemplos de sinônimos:
-   building = edificacoes
-   lot = lotes
-   via = eixos, ruas, streets
-   geoaddress_full = P1 (Point via_name housenumber)
-   geoaddress_full + lot_full = PL1 (Point Lot via_name housenumber)
-   ...
-*/
+-- copy ( select lpad(ftid::text,2,'0') ftid, ftname, description, info->>'description_pt' as description_pt, array_to_string(jsonb_array_totext(info->'synonymous_pt'),'; ') as synonymous_pt from ingest.feature_type where geomtype='class' ) to '/tmp/pg_io/featur_type_classes.csv' CSV HEADER;
+
+-- copy ( select lpad(ftid::text,2,'0') ftid, ftname,geomtype, iif(need_join,'yes'::text,'no') as need_join, description  from ingest.feature_type where geomtype!='class' ) to '/tmp/pg_io/featur_types.csv' CSV HEADER;
 
 CREATE TABLE ingest.file (
   file_id serial NOT NULL PRIMARY KEY,
@@ -213,24 +216,24 @@ CREATE or replace FUNCTION ingest.geojson_load(
     jins_count bigint;
     q_ret text;
   BEGIN
- 
+
   INSERT INTO ingest.file(ftid,file_type,file_meta)
      SELECT p_ftid::smallint,
             COALESCE( p_ftype, substring(p_file from '[^\.]+$') ),
             geojson_readfile_headers(p_file)
      RETURNING file_id INTO q_file_id;
-  
+
   WITH jins AS (
     INSERT INTO ingest.tmp_geojson_feature
-     SELECT * 
+     SELECT *
      FROM geojson_readfile_features_jgeom(p_file, q_file_id )
     RETURNING 1
-   ) 
+   )
    SELECT COUNT(*) FROM jins INTO jins_count;
-   
+
   WITH ins2 AS (
     INSERT INTO ingest.feature
-     SELECT file_id, feature_id, properties, 
+     SELECT file_id, feature_id, properties,
             CASE WHEN p_to4326 AND ST_SRID(geom)!=4326 THEN ST_Transform(geom,4326) ELSE geom END
      FROM (
        SELECT file_id, feature_id, properties,
@@ -243,7 +246,7 @@ CREATE or replace FUNCTION ingest.geojson_load(
    SELECT 'Inserted in tmp '|| jins_count ||' items from file_id '|| q_file_id
          ||E'.\nInserted in feature '|| (SELECT COUNT(*) FROM ins2) ||' items.'
          INTO q_ret;
-         
+
   DELETE FROM ingest.tmp_geojson_feature WHERE file_id = q_file_id;
   RETURN q_ret;
  END;
