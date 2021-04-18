@@ -261,10 +261,15 @@ COMMENT ON FUNCTION geojson_readfile_features_jgeom(text,int)
 ;
 
 CREATE or replace FUNCTION volat_file_write(
-  msg text, file text, fcontent text, fopt boolean
+  file text, 
+  fcontent text,
+  msg text DEFAULT 'Ok', 
+  fopt boolean DEFAULT false
 ) RETURNS text AS $f$
   -- solves de PostgreSQL problem of the "LAZY COALESCE", as https://stackoverflow.com/a/42405837/287948
-  SELECT msg||'. Content bytes: '|| pg_catalog.pg_file_write(file,fcontent,fopt)::text
+  SELECT msg ||'. Content bytes '|| iif(fopt,'writed:'::text,'appended:')
+         ||  pg_catalog.pg_file_write(file,fcontent,fopt)::text
+         || E'\nSee '|| file
 $f$ language SQL volatile;
 COMMENT ON FUNCTION volat_file_write
   IS 'Do lazy coalesce. To use in a "only write when null" condiction of COALESCE(x,volat_file_write()).'
