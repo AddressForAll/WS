@@ -264,17 +264,45 @@ CREATE or replace FUNCTION volat_file_write(
   file text, 
   fcontent text,
   msg text DEFAULT 'Ok', 
-  fopt boolean DEFAULT false
+  append boolean DEFAULT false
 ) RETURNS text AS $f$
   -- solves de PostgreSQL problem of the "LAZY COALESCE", as https://stackoverflow.com/a/42405837/287948
-  SELECT msg ||'. Content bytes '|| iif(fopt,'writed:'::text,'appended:')
-         ||  pg_catalog.pg_file_write(file,fcontent,fopt)::text
+  SELECT msg ||'. Content bytes '|| iif(append,'appended:'::text,'writed:')
+         ||  pg_catalog.pg_file_write(file,fcontent,append)::text
          || E'\nSee '|| file
 $f$ language SQL volatile;
 COMMENT ON FUNCTION volat_file_write
   IS 'Do lazy coalesce. To use in a "only write when null" condiction of COALESCE(x,volat_file_write()).'
 ;
 
+-- -- CSV
+CREATE or replace FUNCTION copy_csv(
+  p_filename  text,
+  p_query     text = NULL,
+  p_etc       text = 'HEADER',
+  p_root      text = '/tmp/pg_io/'
+) RETURNS text AS $f$
+DECLARE
+  f text;
+BEGIN
+  IF p_query IS NULL THEN
+      p_query := 'SELECT * FROM '||p_filename;
+  END IF;
+  IF p_filename !~ '\.[a-zA-Z0-9]+$' THEN
+      p_filename := p_filename||'.csv';
+  END IF;
+  f := CASE WHEN substr(p_filename,1,1)='/' THEN p_filename ELSE p_root||p_filename END; 
+  EXECUTE format(
+    'COPY (%s)      TO %L CSV   %s'
+    ,      p_query,    f     ,  p_etc
+  );
+  RETURN f;
+END
+$f$ LANGUAGE PLpgSQL;
+COMMENT ON FUNCTION copy_csv
+ IS 'Easy transform query or view-name to COPY-to-CSV, with optional header. Example: copy_csv(tableName).';
+
+                    
 -- handling of CSV files and its heders:
 
 CREATE or replace FUNCTION pg_csv_head(
