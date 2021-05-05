@@ -17,7 +17,6 @@ COMMENT ON FUNCTION iif
   IS 'Immediate IF. Sintax sugar for the most frequent CASE WHEN THEN ELSE END.'
 ;
 
-
 -- -- -- -- -- -- -- -- -- -- --
 -- Complementar CAST functions:
 
@@ -56,6 +55,19 @@ CREATE or replace FUNCTION text_to_boolean(x text, as_null boolean DEFAULT NULL)
   END
   FROM (SELECT lower(x)) t(s)
 $f$ language SQL immutable;
+
+
+/*
+CREATE or replace FUNCTION array_to_formated_pairs(x text[]) RETURNS text AS $f$
+  -- for dynamic query using jsonb_build_object(pairs)
+  SELECT array_to_string( array_agg(format('%L,%s',i,i)), ',' )
+  FROM unnest(x) t(i)
+$f$ language SQL immutable;
+see
+select a, b, to_jsonb(subq) as info
+  from t, lateral (select c, d, e) subq;
+*/
+
 
 CREATE or replace FUNCTION json_array_totext(json) RETURNS text[] AS $f$
   SELECT COALESCE(
@@ -184,11 +196,30 @@ COMMENT ON FUNCTION pg_read_file(text,boolean)
   IS 'Simplified pg_read_file(). For GeoJSON preffer jsonb_read_stat_file(). DANGER FOR BIG FILES, please review it.'
 ;
 
+CREATE or replace FUNCTION jsonb_pg_stat_file(
+  f text,
+  add_md5 boolean DEFAULT false,
+  missing_ok boolean DEFAULT true
+) RETURNS JSONb AS $f$
+  -- = indest.get_file_meta().
+  SELECT j
+         || jsonb_build_object( 'file',f )
+         || CASE WHEN add_md5 THEN jsonb_build_object( 'hash_md5', md5(pg_read_binary_file(f)) ) ELSE '{}'::jsonb END
+  FROM to_jsonb( pg_stat_file(f,missing_ok) ) t(j)
+  WHERE j IS NOT NULL
+$f$ LANGUAGE SQL IMMUTABLE;
+COMMENT ON FUNCTION jsonb_pg_stat_file
+  IS 'Same as pg_stat_file(), but returning JSONb anb adding option to include MD5 digest.'
+;
+
 CREATE or replace FUNCTION jsonb_read_stat_file(
   f text,   -- absolute path and filename
-  missing_ok boolean DEFAULT false -- an error is raised, else (if true), the function returns NULL when file not found.
+  missing_ok boolean DEFAULT false, -- an error is raised, else (if true), the function returns NULL when file not found.
+  add_md5 boolean DEFAULT false
 ) RETURNS JSONb AS $f$
-  SELECT j || jsonb_build_object( 'file',f,  'content',pg_read_file(f)::JSONB )
+  SELECT j
+         || jsonb_build_object( 'file',f,  'content',pg_read_file(f)::JSONB )
+         || CASE WHEN add_md5 THEN jsonb_build_object( 'hash_md5', md5(pg_read_binary_file(f)) ) ELSE '{}'::jsonb END
   FROM to_jsonb( pg_stat_file(f,missing_ok) ) t(j)
   WHERE j IS NOT NULL
 $f$ LANGUAGE SQL IMMUTABLE;
@@ -261,9 +292,9 @@ COMMENT ON FUNCTION geojson_readfile_features_jgeom(text,int)
 ;
 
 CREATE or replace FUNCTION volat_file_write(
-  file text, 
+  file text,
   fcontent text,
-  msg text DEFAULT 'Ok', 
+  msg text DEFAULT 'Ok',
   append boolean DEFAULT false
 ) RETURNS text AS $f$
   -- solves de PostgreSQL problem of the "LAZY COALESCE", as https://stackoverflow.com/a/42405837/287948
@@ -291,7 +322,7 @@ BEGIN
   IF p_filename !~ '\.[a-zA-Z0-9]+$' THEN
       p_filename := p_filename||'.csv';
   END IF;
-  f := CASE WHEN substr(p_filename,1,1)='/' THEN p_filename ELSE p_root||p_filename END; 
+  f := CASE WHEN substr(p_filename,1,1)='/' THEN p_filename ELSE p_root||p_filename END;
   EXECUTE format(
     'COPY (%s)      TO %L CSV   %s'
     ,      p_query,    f     ,  p_etc
@@ -302,7 +333,7 @@ $f$ LANGUAGE PLpgSQL;
 COMMENT ON FUNCTION copy_csv
  IS 'Easy transform query or view-name to COPY-to-CSV, with optional header. Example: copy_csv(tableName).';
 
-                    
+
 -- handling of CSV files and its heders:
 
 CREATE or replace FUNCTION pg_csv_head(
