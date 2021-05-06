@@ -300,6 +300,7 @@ COMMENT ON FUNCTION ingest.getmeta_to_file(text,text,int,text)
 -- ex. select ingest.getmeta_to_file('/tmp/a.csv',3,555);
 -- ex. select ingest.getmeta_to_file('/tmp/b.shp','geoaddress_full',555);
 
+
 --- depois de realizada externamente e carga do shapfile ... ou usando
 CREATE or replace FUNCTION ingest.any_load(
     p_fileref text,  -- apenas referencia para ingest.file
@@ -312,7 +313,7 @@ CREATE or replace FUNCTION ingest.any_load(
 ) RETURNS text AS $f$
   DECLARE
     q_file_id integer;
-    query text;
+    q_query text;
     q_ret text;
     feature_id_col text;
     use_tabcols boolean;
@@ -324,41 +325,42 @@ CREATE or replace FUNCTION ingest.any_load(
   ELSE
     feature_id_col := 'row_number() OVER () as gid';
   END IF;
-  use_tabcols := p_tabcols is not NULL AND array_lenght(p_tabcols)>0;
-  query := format(
+  use_tabcols := p_tabcols is not NULL AND array_length(p_tabcols,1)>0;
+  q_query := format(
       $$
       WITH ins2 AS (
         INSERT INTO ingest.feature
-         SELECT q_file_id, gid, properties,
+         SELECT %s, gid, properties,
                 CASE
                   WHEN ST_SRID(geom)=0 THEN ST_SetSRID(geom,4326)
-                  WHEN p_to4326 AND ST_SRID(geom)!=4326 THEN ST_Transform(geom,4326)
+                  WHEN %s AND ST_SRID(geom)!=4326 THEN ST_Transform(geom,4326)
                   ELSE geom
                 END
          FROM (
-           SELECT %s, %s as properties
+           SELECT %s, %s as properties,
                   %s AS geom
            FROM %s %s
          ) t1
         RETURNING 1
        )
-       SELECT 'Inserted in tmp '|| jins_count ||' items from file_id '|| q_file_id
-           ||E'.\nInserted in feature '|| (SELECT COUNT(*) FROM ins2) ||' items.'
-           INTO q_ret
+       SELECT E'Inserted from file_id=%s.\nInserted in feature '|| (SELECT COUNT(*) FROM ins2) ||' items.'
     $$,
+    q_file_id, iif(p_to4326,'true'::text,'false'),
     feature_id_col,
-    iIF( use_tabcols, 'to_jsonb(subq)', E'\'{}\'::jsonb' ),
+    iIF( use_tabcols, 'to_jsonb(subq)'::text, E'\'{}\'::jsonb' ),
     p_geom_name,
-    iIF( use_tabcols, ', LATERAL (SELECT '|| array_to_string(p_tabcols,',') ||') subq',  '' )
+    p_tabname,
+    iIF( use_tabcols, ', LATERAL (SELECT '|| array_to_string(p_tabcols,',') ||') subq',  ''::text ),
+    q_file_id
   );
-  EXECUTE query;
+  EXECUTE q_query INTO q_ret;
   RETURN q_ret;
   END;
 $f$ LANGUAGE PLpgSQL;
 COMMENT ON FUNCTION ingest.any_load
   IS 'Load (into ingest.feature) shapefile or any other non-GeoJSON, of a separated table.'
 ;
-
+-- ex. SELECT ingest.any_load('/tmp/pg_io/NRO_IMOVEL.shp','geoaddress_none','pk027_geoaddress1',27,array['gid','textstring']);
 
 -- INSERT GEOMETRIA QQ com referencia a arquivo e layer
 -- FILE não tem ftype!
