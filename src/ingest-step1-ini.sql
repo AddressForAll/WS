@@ -177,8 +177,10 @@ INSERT INTO ingest.feature_type VALUES
   (71,'nsvia_full',   'poly', false, 'Namespace of vias polygon with name and optional metadata', NULL),
   (72,'nsvia_ext',    'poly', true,  'Namespace of vias polygon with external metadata', NULL)
 ;
+-- Para a iconografia do site:
+-- SELECT f.ftname as "feature type", t.geomtype as "geometry type", f.description from ingest.feature_type f inner JOIN (select  substring(ftname from '^[^_]+') as ftgroup, geomtype  from ingest.feature_type where geomtype!='class' group by 1,2) t ON t.ftgroup=f.ftname ;--where t.geomtype='class';
+-- Para gerar backup CSV:
 -- copy ( select lpad(ftid::text,2,'0') ftid, ftname, description, info->>'description_pt' as description_pt, array_to_string(jsonb_array_totext(info->'synonymous_pt'),'; ') as synonymous_pt from ingest.feature_type where geomtype='class' ) to '/tmp/pg_io/featur_type_classes.csv' CSV HEADER;
-
 -- copy ( select lpad(ftid::text,2,'0') ftid, ftname,geomtype, iif(need_join,'yes'::text,'no') as need_join, description  from ingest.feature_type where geomtype!='class' ) to '/tmp/pg_io/featur_types.csv' CSV HEADER;
 
 DROP TABLE ingest.file;
