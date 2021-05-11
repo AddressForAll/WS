@@ -183,20 +183,21 @@ INSERT INTO ingest.feature_type VALUES
 -- copy ( select lpad(ftid::text,2,'0') ftid, ftname, description, info->>'description_pt' as description_pt, array_to_string(jsonb_array_totext(info->'synonymous_pt'),'; ') as synonymous_pt from ingest.feature_type where geomtype='class' ) to '/tmp/pg_io/featur_type_classes.csv' CSV HEADER;
 -- copy ( select lpad(ftid::text,2,'0') ftid, ftname,geomtype, iif(need_join,'yes'::text,'no') as need_join, description  from ingest.feature_type where geomtype!='class' ) to '/tmp/pg_io/featur_types.csv' CSV HEADER;
 
-DROP TABLE ingest.file;
-CREATE TABLE ingest.file (
-  pack_id int NOT NULL, -- not controled here, only at final insert into Optim.
+
+-- DROP TABLE ingest.layer_file;
+CREATE TABLE ingest.layer_file (
+  pack_id int NOT NULL, -- package file ID, not controled here. Talvez seja packVers (package and version)
   file_id serial NOT NULL PRIMARY KEY,
   ftid smallint NOT NULL REFERENCES ingest.feature_type(ftid),
   file_type text,  -- csv, geojson, shapefile, etc.
   proc_step int DEFAULT 1,  -- current status of the "processing steps", 1=started, 2=loaded, ...=finished
   hash_md5 text NOT NULL, -- or "size-md5" as really unique string
   file_meta jsonb,
-  UNIQUE(hash_md5)
+  UNIQUE(hash_md5) -- or (ftid,hash_md5)?  não faz sentido usar duas vezes se existe _full.
 );
 
 CREATE TABLE ingest.tmp_geojson_feature (
-  file_id int NOT NULL REFERENCES ingest.file(file_id),
+  file_id int NOT NULL REFERENCES ingest.layer_file(file_id),
   feature_id int,
   feature_type text,
   properties jsonb,
@@ -204,16 +205,17 @@ CREATE TABLE ingest.tmp_geojson_feature (
   UNIQUE(file_id,feature_id)
 );
 
-CREATE TABLE ingest.feature (
-  file_id int NOT NULL REFERENCES ingest.file(file_id),
+CREATE TABLE ingest.feature_asis (
+  file_id int NOT NULL REFERENCES ingest.layer_file(file_id),
   feature_id int NOT NULL,
   properties jsonb,
   geom geometry,
   UNIQUE(file_id,feature_id)
 );
 
------
-
+----------------
+----------------
+-- Ingest AS-IS
 
 CREATE or replace FUNCTION ingest.geojson_load(
     p_file text, -- absolute path and filename, test with '/tmp/pg_io/EXEMPLO3.geojson'
@@ -228,7 +230,7 @@ CREATE or replace FUNCTION ingest.geojson_load(
     q_ret text;
   BEGIN
 
-  INSERT INTO ingest.file(ftid,file_type,file_meta)
+  INSERT INTO ingest.layer_file(ftid,file_type,file_meta)
      SELECT p_ftid::smallint,
             COALESCE( p_ftype, substring(p_file from '[^\.]+$') ),
             geojson_readfile_headers(p_file)
@@ -243,7 +245,7 @@ CREATE or replace FUNCTION ingest.geojson_load(
    SELECT COUNT(*) FROM jins INTO jins_count;
 
   WITH ins2 AS (
-    INSERT INTO ingest.feature
+    INSERT INTO ingest.feature_asis
      SELECT file_id, feature_id, properties,
             CASE WHEN p_to4326 AND ST_SRID(geom)!=4326 THEN ST_Transform(geom,4326) ELSE geom END
      FROM (
@@ -263,8 +265,7 @@ CREATE or replace FUNCTION ingest.geojson_load(
  END;
 $f$ LANGUAGE PLpgSQL;
 
------
--- Ingest AS-IS
+
 
 CREATE or replace FUNCTION ingest.getmeta_to_file(
   p_file text,
@@ -272,7 +273,7 @@ CREATE or replace FUNCTION ingest.getmeta_to_file(
   p_pack_id int,
   p_ftype text DEFAULT NULL
 ) RETURNS int AS $f$
- INSERT INTO ingest.file(pack_id,ftid,file_type,hash_md5,file_meta)
+ INSERT INTO ingest.layer_file(pack_id,ftid,file_type,hash_md5,file_meta)
    SELECT p_pack_id, p_ftid, ftype, fmeta->>'hash_md5', (fmeta - 'hash_md5')
    FROM (
        SELECT COALESCE( p_ftype, substring(p_file from '[^\.]+$') ) as ftype,
@@ -305,7 +306,7 @@ COMMENT ON FUNCTION ingest.getmeta_to_file(text,text,int,text)
 
 --- depois de realizada externamente e carga do shapfile ... ou usando
 CREATE or replace FUNCTION ingest.any_load(
-    p_fileref text,  -- apenas referencia para ingest.file
+    p_fileref text,  -- apenas referencia para ingest.layer_file
     p_ftname text,   -- featureType of layer... um file pode ter mais de um layer??
     p_tabname text,  -- tabela temporária de ingestáo
     p_pack_id int,   -- id do package da Preservação.
@@ -331,7 +332,7 @@ CREATE or replace FUNCTION ingest.any_load(
   q_query := format(
       $$
       WITH ins2 AS (
-        INSERT INTO ingest.feature
+        INSERT INTO ingest.feature_asis
          SELECT %s, gid, properties,
                 CASE
                   WHEN ST_SRID(geom)=0 THEN ST_SetSRID(geom,4326)
@@ -345,7 +346,8 @@ CREATE or replace FUNCTION ingest.any_load(
          ) t1
         RETURNING 1
        )
-       SELECT E'Inserted from file_id=%s.\nInserted in feature '|| (SELECT COUNT(*) FROM ins2) ||' items.'
+       SELECT E'From file_id=%s inserted type=%s\nin feature_asis '
+              || (SELECT COUNT(*) FROM ins2) ||' items.'
     $$,
     q_file_id, iif(p_to4326,'true'::text,'false'),
     feature_id_col,
@@ -353,19 +355,20 @@ CREATE or replace FUNCTION ingest.any_load(
     p_geom_name,
     p_tabname,
     iIF( use_tabcols, ', LATERAL (SELECT '|| array_to_string(p_tabcols,',') ||') subq',  ''::text ),
-    q_file_id
+    q_file_id,
+    p_ftname
   );
   EXECUTE q_query INTO q_ret;
   RETURN q_ret;
   END;
 $f$ LANGUAGE PLpgSQL;
 COMMENT ON FUNCTION ingest.any_load
-  IS 'Load (into ingest.feature) shapefile or any other non-GeoJSON, of a separated table.'
+  IS 'Load (into ingest.feature_asis) shapefile or any other non-GeoJSON, of a separated table.'
 ;
 -- ex. SELECT ingest.any_load('/tmp/pg_io/NRO_IMOVEL.shp','geoaddress_none','pk027_geoaddress1',27,array['gid','textstring']);
 
 -- INSERT GEOMETRIA QQ com referencia a arquivo e layer
 -- FILE não tem ftype!
--- ingest.file tem muitos ingest.file_layer(ftype!)  que tem suas geometrias em ingest.layer_geom
+-- ingest.layer_file tem muitos ingest.file_layer(ftype!)  que tem suas geometrias em ingest.layer_geom
 
 -- SELECT ingest.geom_asis_filemeta('/tmp/bigbigfile.zip');
