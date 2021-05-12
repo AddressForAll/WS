@@ -4,42 +4,65 @@
 
 ## -- -- VARS -- --
 
-pg_io   =/tmp/pg_io
-pg_uri  =postgres://postgres@localhost
-iniExts ="CREATE EXTENSION IF NOT EXISTS hstore; CREATE EXTENSION IF NOT EXISTS postgis;"
+opt_lock =/opt/lock-mkStatus
+pg_io    =/tmp/pg_io
+pg_uri   =postgres://postgres@localhost
+iniExts  ="CREATE EXTENSION IF NOT EXISTS hstore; CREATE EXTENSION IF NOT EXISTS postgis;"
 
 ## -- -- RULES -- --
 
+all:
+	@echo "Use primeiro   sudo make ini_basics"
+	@echo "Use depois     make ini_all"
+	@echo "!Importante para master users:"
+	@echo "   sudo usermod -a -G postgres masterUser"
+	@echo "   sudo usermod -a -G www-data masterUser"
+
 ini_all: ini_database_list_tmp ini_step1 ini_step2 ini_step3_api ini_step4_optim optim_step1 clean
 
+
+
+ini_basics: ini_tmprefresh dir_refresh
+		@echo "-- ok ini basics --"
+
 ini_tmprefresh:
+	@echo "-- ini_tmprefresh --"
+	@echo "Sou root? sou sudo? entre meus grupos tenho postgres?"
 	whoami
+	groups
 	@echo "Run with sudo! (idempotent)"
 	mkdir -p $(pg_io)
 	mkdir -p $(pg_io)/digital-preservartion-XX
-	chmod -R 776  $(pg_io)
+	chmod 777  $(pg_io)
+	chmod -f 744  $(pg_io)/*.* || true
 	chown -R postgres:postgres $(pg_io)/
-	touch /opt/lock-mkStatus/tmp-makeStep00.~feito
+	mkdir -p $(opt_lock)
+	chmod 777  $(opt_lock)
+	touch $(opt_lock)/tmp-makeStep00.~feito
+	chown -R postgres:www-data $(opt_lock)/
+	chmod -f 666  $(opt_lock)/*.* || true
 
-ini_database_list_tmp: /opt/lock-mkStatus/tmp-makeStep00.~feito  # not sudor
-	psql -lqt | cut -d \| -f 1 > $(pg_io)/database_list_tmp.txt
+
+ini_database_list_tmp: $(opt_lock)/tmp-makeStep00.~feito  # not sudor
+	@echo "!run before:   sudo make ini_tmprefresh"
+	psql $(pg_uri) -lqt | cut -d \| -f 1 > $(pg_io)/database_list_tmp.txt
 
 ini_step1: ini_database_list_tmp
-	rm /opt/lock-mkStatus/*~feito
+	rm $(opt_lock)/*~feito
 	bash mk-ini_step1.sh
-	touch /opt/lock-mkStatus/WS-makeStep01.~feito
+	touch $(opt_lock)/WS-makeStep01.~feito
 
-ini_step2: ini_step1 /opt/lock-mkStatus/WS-makeStep01.~feito
+ini_step2: ini_step1 $(opt_lock)/WS-makeStep01.~feito
 	psql $(pg_uri)/dl03t_main -c "CREATE SCHEMA IF NOT EXISTS Optim"
 	psql $(pg_uri)/dl03t_main -c $(iniExts)
 	psql $(pg_uri)/ingest1    -c $(iniExts)
 	psql $(pg_uri)/ingest2    -c $(iniExts)
-	touch /opt/lock-mkStatus/WS-makeStep02.~feito
+	touch $(opt_lock)/WS-makeStep02.~feito
 
-ini_step3_api: /opt/lock-mkStatus/WS-makeStep02.~feito
+ini_step3_api: $(opt_lock)/WS-makeStep02.~feito
 	psql $(pg_uri)/dl03t_main < step01-iniApi.sql
 
-ini_step4_optim: ini_step4_terms /opt/lock-mkStatus/WS-makeStep02.~feito
+ini_step4_optim: ini_step4_terms $(opt_lock)/WS-makeStep02.~feito
 	@echo "Creating optim schema and its libs at DL03t_main database"
 	#psql dl03t_main < ./optim-step1-ini.sql
 
@@ -51,14 +74,14 @@ ini_step6_pgrestUp: dkr_03t_main dkr_04s_main
 
 ## Optim core:
 
-optim_step1: optim-step1-ini.sql /opt/lock-mkStatus/WS-makeStep02.~feito
+optim_step1: optim-step1-ini.sql $(opt_lock)/WS-makeStep02.~feito
 	@echo "Schema optim, core initialization (só roda com usuário sudo -u postgres)"
-	psql dl03t_main < pubLib.sql
-	psql dl03t_main < ingest-step1-ini.sql
-	psql dl03t_main < optim-step1-ini.sql
+	psql $(pg_uri)/dl03t_main < pubLib.sql
+	psql $(pg_uri)/dl03t_main < ingest-step1-ini.sql
+	psql $(pg_uri)/dl03t_main < optim-step1-ini.sql
 	# bug pois só roda via "sudo su postgres"
 	sh $(pg_io)/run_wgets-all.sh
-	psql dl03t_main < optim-step2-ins.sql
+	psql $(pg_uri)/dl03t_main < optim-step2-ins.sql
 
 ## DOCKER RULES:
 
@@ -99,18 +122,18 @@ status_base:
 
 status_schEtc:
 	@echo "-- database ingest1:"
-	psql ingest1    -c "\dn"
+	psql $(pg_uri)/ingest1    -c "\dn"
 	@echo "-- OSM testing database DL01t_osm:"
-	psql dl01t_osm  -c "\dn"
+	psql $(pg_uri)/dl01t_osm  -c "\dn"
 	@echo "-- MAIN testing database DL03t_main:"
-	psql dl03t_main -c "\dn"
+	psql $(pg_uri)/dl03t_main -c "\dn"
 
 status_schProd:
 	@echo "-- -- -- ON-PRODUCTION SCHEMAS -- -- --"
 	@echo "-- OSM stable database DL02s_osm:"
-	psql dl02s_osm  -c "\dn"
+	psql $(pg_uri)/dl02s_osm  -c "\dn"
 	@echo "-- MAIN stable database DL04s_main:"
-	psql dl04s_main -c "\dn"
+	psql $(pg_uri)/dl04s_main -c "\dn"
 
 status_disk_abuse:
 	@echo "-- -- -- CHECK disk abuse -- -- --"
@@ -122,30 +145,30 @@ status_disk_abuse:
 dir_ini:
 	whoami
 	@echo "Run with sudo! (idempotent)"
-	mkdir -p /opt/BKPS
+	#mkdir -p /opt/BKPS
 	mkdir -p /opt/gits
-	mkdir -p /opt/lock-mkStatus
+	mkdir -p $(opt_lock)
 
 dir_refresh:
 	whoami
 	@echo "Run with sudo! (idempotent)"
 	# opcional seria www-data:www-data
 	chown -R postgres:www-data /var/www
-	chown -R postgres:www-data /opt/BKPS
+	#chown -R postgres:www-data /opt/BKPS
 	chown -R postgres:www-data /opt/gits
-	chown -R postgres:www-data /opt/lock-mkStatus
+	chown -R postgres:www-data $(opt_lock)
 	# etc
-	chmod 774 /opt/BKPS # ou 755
-	find /opt/BKPS/* -type d -exec chmod 755 {} \+
-	find /opt/BKPS/* -type f -exec chmod 664 {} \+  # ou 674 ou 655
+	#chmod 774 /opt/BKPS # ou 755
+	#find /opt/BKPS/* -type d -exec chmod 755 {} \+
+	#find /opt/BKPS/* -type f -exec chmod 664 {} \+  # ou 674 ou 655
 	# etc
 	chmod 774 /opt/gits # ou 755
 	find /opt/gits/* -type d -exec chmod 774 {} \+
 	find /opt/gits/* -type f -exec chmod 664 {} \+  # ou 674 ou 655
 	#chmod 755 /opt/gits
 	#chmod -R a-x,a=rX,u+w /opt/gits/*
-	chmod 755 /opt/lock-mkStatus
-	chmod -R a-x,a=rX,u+w /opt/lock-mkStatus/*
+	chmod 755 $(opt_lock)
+	chmod -R a-x,a=rX,u+w $(opt_lock)/*
 
 ## DOC AND HELP
 #
