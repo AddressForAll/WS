@@ -22,6 +22,6 @@ do
   if  grep -iqw "$db" /tmp/pg_io/database_list_tmp.txt ; then
       echo " (base já existe)"
   else
-      psql -c "CREATE DATABASE $db"
+      psql postgres://postgres@localhost -c "CREATE DATABASE $db"
   fi
 done

@@ -5,9 +5,26 @@
 ## -- -- VARS -- --
 
 opt_lock =/opt/lock-mkStatus
+gits     =/opt/gits
 pg_io    =/tmp/pg_io
 pg_uri   =postgres://postgres@localhost
 iniExts  ="CREATE EXTENSION IF NOT EXISTS hstore; CREATE EXTENSION IF NOT EXISTS postgis;"
+
+## -- -- Functions a revisar -- --
+
+define ITERATE_DATABASES
+arr_databases=("DL03t_main" "DL04s_main" "DL01t_osm" "DL02s_osm" "ingest1" "ingest2" "sandbox") \
+for db in "${arr_databases[@]}" \
+do \
+  echo "-- $db:" \
+  if  grep -iqw "$db" /tmp/pg_io/database_list_tmp.txt ; then \
+      echo " (base já existe)" \
+  else \
+      psql postgres://postgres@localhost -c "CREATE DATABASE $db" \
+  fi \
+done
+endef
+
 
 ## -- -- RULES -- --
 
@@ -25,7 +42,7 @@ ini_all: ini_database_list_tmp ini_step1 ini_step2 ini_step3_api ini_step4_optim
 ini_basics: ini_tmprefresh dir_refresh
 		@echo "-- ok ini basics --"
 
-ini_tmprefresh:
+ini_tmprefresh:  # sudor
 	@echo "-- ini_tmprefresh --"
 	@echo "Sou root? sou sudo? entre meus grupos tenho postgres?"
 	whoami
@@ -41,16 +58,22 @@ ini_tmprefresh:
 	touch $(opt_lock)/tmp-makeStep00.~feito
 	chown -R postgres:www-data $(opt_lock)/
 	chmod -f 666  $(opt_lock)/*.* || true
-
+	@echo "... feito o que era preciso como root."
+	@echo "Digite ^C para finalizar ou ENTER para apagar todas as locks *~feito"
+	@read _ENTER_
+	rm $(opt_lock)/*~feito
 
 ini_database_list_tmp: $(opt_lock)/tmp-makeStep00.~feito  # not sudor
 	@echo "!run before:   sudo make ini_tmprefresh"
 	psql $(pg_uri) -lqt | cut -d \| -f 1 > $(pg_io)/database_list_tmp.txt
+	chmod 666  $(pg_io)/database_list_tmp.txt
 
 ini_step1: ini_database_list_tmp
-	rm $(opt_lock)/*~feito
+	#rm $(opt_lock)/*~feito
 	bash mk-ini_step1.sh
+	#bug $(call ITERATE_DATABASES)
 	touch $(opt_lock)/WS-makeStep01.~feito
+	chmod 666 $(opt_lock)/WS-makeStep01.~feito
 
 ini_step2: ini_step1 $(opt_lock)/WS-makeStep01.~feito
 	psql $(pg_uri)/dl03t_main -c "CREATE SCHEMA IF NOT EXISTS Optim"
@@ -58,16 +81,17 @@ ini_step2: ini_step1 $(opt_lock)/WS-makeStep01.~feito
 	psql $(pg_uri)/ingest1    -c $(iniExts)
 	psql $(pg_uri)/ingest2    -c $(iniExts)
 	touch $(opt_lock)/WS-makeStep02.~feito
+	chmod 666 $(opt_lock)/WS-makeStep02.~feito
 
 ini_step3_api: $(opt_lock)/WS-makeStep02.~feito
 	psql $(pg_uri)/dl03t_main < step01-iniApi.sql
 
 ini_step4_optim: ini_step4_terms $(opt_lock)/WS-makeStep02.~feito
 	@echo "Creating optim schema and its libs at DL03t_main database"
-	#psql dl03t_main < ./optim-step1-ini.sql
+	psql $(pg_uri)/dl03t_main < ./optim-step1-ini.sql
 
-ini_step5_terms: /opt/gits/sql-term/makefile
-	@echo "se nao tem /opt/gits/sql-term precisa criar, senao git pull do sql-term. Execute o make."
+ini_step5_terms: $(gits)/sql-term/makefile
+	@echo "se nao tem $(gits)/sql-term precisa criar, senao git pull do sql-term. Execute o make."
 
 ini_step6_pgrestUp: dkr_03t_main dkr_04s_main
 	@echo "PostgREST Dockers up"
@@ -75,11 +99,14 @@ ini_step6_pgrestUp: dkr_03t_main dkr_04s_main
 ## Optim core:
 
 optim_step1: optim-step1-ini.sql $(opt_lock)/WS-makeStep02.~feito
-	@echo "Schema optim, core initialization (só roda com usuário sudo -u postgres)"
+	@echo "-- Schema optim, core initialization --"
+	@echo "Só roda com usuário 'sudo -u postgres', digite ENTER se ok"
+	whoami
+	@read _digite_enter_
 	psql $(pg_uri)/dl03t_main < pubLib.sql
 	psql $(pg_uri)/dl03t_main < ingest-step1-ini.sql
 	psql $(pg_uri)/dl03t_main < optim-step1-ini.sql
-	# bug pois só roda via "sudo su postgres"
+	# conferir se bug pois só roda via "sudo su postgres"
 	sh $(pg_io)/run_wgets-all.sh
 	psql $(pg_uri)/dl03t_main < optim-step2-ins.sql
 
@@ -94,10 +121,10 @@ dkr_04s_main: docker-compose.yml
 dkr_refresh: dkr_refresh_dl03 dkr_refresh_dl04
 	@echo "PostgREST functio-return structures refreshed"
 
-dkr_refresh_dl03: /opt/gits/WS/src/docker-compose.yml
-	docker-compose -f /opt/gits/WS/src/docker-compose.yml kill -s SIGUSR1 pgrestDL03
+dkr_refresh_dl03: $(gits)/WS/src/docker-compose.yml
+	docker-compose -f $(gits)/WS/src/docker-compose.yml kill -s SIGUSR1 pgrestDL03
 
-dkr_refresh_dl04: /opt/gits/WS/src/docker-compose.yml
+dkr_refresh_dl04: $(gits)/WS/src/docker-compose.yml
 	docker-compose -f /opt/gits/WS/src/docker-compose.yml kill -s SIGUSR1 pgrestDL04
 
 ## clean all? or by prefix ini_clean, etc.?
@@ -137,7 +164,7 @@ status_schProd:
 
 status_disk_abuse:
 	@echo "-- -- -- CHECK disk abuse -- -- --"
-	du -h /opt/gits  | grep -v M  | grep -v K
+	du -h $(gits)  | grep -v M  | grep -v K
 	du -h /var/www   | grep -v M  | grep -v K
 	du -h /tmp   | grep -v M  | grep -v K
 
@@ -146,7 +173,7 @@ dir_ini:
 	whoami
 	@echo "Run with sudo! (idempotent)"
 	#mkdir -p /opt/BKPS
-	mkdir -p /opt/gits
+	mkdir -p $(gits)
 	mkdir -p $(opt_lock)
 
 dir_refresh:
@@ -155,18 +182,17 @@ dir_refresh:
 	# opcional seria www-data:www-data
 	chown -R postgres:www-data /var/www
 	#chown -R postgres:www-data /opt/BKPS
-	chown -R postgres:www-data /opt/gits
+	chown -R postgres:www-data $(gits)
 	chown -R postgres:www-data $(opt_lock)
 	# etc
 	#chmod 774 /opt/BKPS # ou 755
 	#find /opt/BKPS/* -type d -exec chmod 755 {} \+
 	#find /opt/BKPS/* -type f -exec chmod 664 {} \+  # ou 674 ou 655
 	# etc
-	chmod 774 /opt/gits # ou 755
-	find /opt/gits/* -type d -exec chmod 774 {} \+
-	find /opt/gits/* -type f -exec chmod 664 {} \+  # ou 674 ou 655
-	#chmod 755 /opt/gits
-	#chmod -R a-x,a=rX,u+w /opt/gits/*
+	chmod 777 $(gits) # ou 774 ou 755...
+	find $(gits)/* -type d -exec chmod 774 {} \+
+	find $(gits)/* -type f -exec chmod 664 {} \+  # ou 674 ou 655
+	#chmod -R a-x,a=rX,u+w $(gits)/*
 	chmod 755 $(opt_lock)
 	chmod -R a-x,a=rX,u+w $(opt_lock)/*
 
