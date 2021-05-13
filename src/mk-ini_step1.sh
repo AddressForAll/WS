@@ -1,6 +1,6 @@
 # run for makefile the ini_step1. CREATE all official databases.
 # Template para a criação de bases em Portugues do Brasil:
-psql -c "\
+psql postgres://postgres@localhost -c "\
 ALTER database template1 is_template=false;\
 DROP database template1;\
 CREATE DATABASE template1\

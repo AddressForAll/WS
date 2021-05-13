@@ -117,7 +117,7 @@ COMMENT ON FUNCTION ingest.fdw_generate_getclone
 
 ------------
 -- GEOMETRIAS
-
+/*
 CREATE TABLE ingest.addr_point(
   ?file_id,
   pack_id int, -- each donated package have only 1 set of points. E.g. pk012 of BR_MG_BHO.
@@ -132,7 +132,7 @@ CREATE TABLE ingest.addr_point(
 COMMENT ON TABLE ingest.addr_point
   IS 'Ingested address points of one or more packages, temporary data (not need package-version).'
 ;
-
+*/
 CREATE TABLE ingest.via_line(
   pack_id int NOT NULL, -- REFERENCES optim.donatedPack(pack_id),
   vianame text,

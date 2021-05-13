@@ -35,7 +35,8 @@ all:
 	@echo "   sudo usermod -a -G postgres masterUser"
 	@echo "   sudo usermod -a -G www-data masterUser"
 
-ini_all: ini_database_list_tmp ini_step1 ini_step2 ini_step3_api ini_step4_optim optim_step1 clean
+#ini_all: ini_database_list_tmp ini_step1 ini_step2 ini_step3_api ini_step4_optim optim_step1 clean
+ini_all: ini_database_list_tmp ini_step1 ini_step2 optim_step1 clean
 
 
 
@@ -193,7 +194,7 @@ dir_refresh:
 	find $(gits)/* -type d -exec chmod 774 {} \+
 	find $(gits)/* -type f -exec chmod 664 {} \+  # ou 674 ou 655
 	#chmod -R a-x,a=rX,u+w $(gits)/*
-	chmod 755 $(opt_lock)
+	chmod 777 $(opt_lock)
 	chmod -R a-x,a=rX,u+w $(opt_lock)/*
 
 ## DOC AND HELP
