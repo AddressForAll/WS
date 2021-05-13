@@ -20,14 +20,14 @@ COMMENT ON FUNCTION iif
 -- -- -- -- -- -- -- -- -- -- --
 -- Complementar CAST functions:
 
-CREATE FUNCTION ROUND(float,int) RETURNS NUMERIC AS $wrap$
+CREATE or replace FUNCTION ROUND(float,int) RETURNS NUMERIC AS $wrap$
    SELECT ROUND($1::numeric,$2)
 $wrap$ language SQL IMMUTABLE;
 COMMENT ON FUNCTION ROUND(float,int)
   IS 'Cast for ROUND(float,x). Useful for SUM, AVG, etc. See also https://stackoverflow.com/a/20934099/287948.'
 ;
 
-CREATE FUNCTION round_minutes(TIMESTAMP WITHOUT TIME ZONE, integer)
+CREATE or replace FUNCTION round_minutes(TIMESTAMP WITHOUT TIME ZONE, integer)
 RETURNS TIMESTAMP WITHOUT TIME ZONE AS $f$
   SELECT
      date_trunc('hour', $1)
@@ -40,7 +40,7 @@ $f$ LANGUAGE SQL IMMUTABLE;
 COMMENT ON FUNCTION round_minutes(TIMESTAMP WITHOUT TIME ZONE, integer)
   IS 'Adaptation for ROUND(time) in minutes. Example: round_minutes(t,5). See also https://stackoverflow.com/a/8963684/287948.'
 ;
-CREATE FUNCTION round_minutes(TIMESTAMP WITHOUT TIME ZONE, integer,text) RETURNS text AS $wrap$
+CREATE or replace FUNCTION round_minutes(TIMESTAMP WITHOUT TIME ZONE, integer,text) RETURNS text AS $wrap$
   SELECT to_char(round_minutes($1,$2),$3)
 $wrap$ LANGUAGE SQL IMMUTABLE;
 COMMENT ON FUNCTION round_minutes(TIMESTAMP WITHOUT TIME ZONE, integer, text)
@@ -178,9 +178,9 @@ CREATE or replace FUNCTION jsonb_strip_nulls(
      WHEN p_ret_empty THEN x
      WHEN x='{}'::JSONb THEN NULL
      ELSE x END
-  FROM (SELECT jsonb_strip_nulls(p_input)) t(x)
+  FROM ( SELECT jsonb_strip_nulls(p_input) ) t(x)
 $f$ LANGUAGE SQL IMMUTABLE;
-COMMENT ON AGGREGATE FUNCTION jsonb_strip_nulls(jsonb,boolean)
+COMMENT ON FUNCTION jsonb_strip_nulls(jsonb,boolean)
   IS 'Extends jsonb_strip_nulls to return NULL instead empty';
 
 -- -- -- -- -- -- -- -- -- -- --
@@ -223,7 +223,7 @@ CREATE or replace FUNCTION jsonb_read_stat_file(
   FROM to_jsonb( pg_stat_file(f,missing_ok) ) t(j)
   WHERE j IS NOT NULL
 $f$ LANGUAGE SQL IMMUTABLE;
-COMMENT ON FUNCTION jsonb_read_stat_file(text,boolean)
+COMMENT ON FUNCTION jsonb_read_stat_file(text,boolean,boolean)
   IS 'Same as pg_read_file() but augmented with JSONb parse and pg_stat_file() metadata.'
 ;
 
@@ -256,8 +256,8 @@ CREATE or replace FUNCTION geojson_readfile_features(f text) RETURNS TABLE (
   fname text, feature_id int, geojson_type text,
   feature_type text, properties jsonb, geom geometry
 ) AS $f$
-   SELECT fname, (ROW_NUMBER() OVER())::int -- feature_id,
-          geojson_type, feature->>'type'    -- feature_type,
+   SELECT fname, (ROW_NUMBER() OVER())::int, -- feature_id,
+          geojson_type, feature->>'type',    -- feature_type,
           jsonb_objslice('name',feature) || feature->'properties', -- properties and name.
           -- see CRS problems at https://gis.stackexchange.com/questions/60928/
           ST_GeomFromGeoJSON(  crs || (feature->'geometry')  ) AS geom
@@ -400,7 +400,7 @@ COMMENT ON FUNCTION lexname_to_unix(text)
 ----------------
 -- Other system's helper functions
 
-CREATE FUNCTION col_description(
+CREATE or replace FUNCTION col_description(
  p_relname text,  -- table name or schema.table
  p_colname text,   -- table's column name
  p_database text DEFAULT NULL -- NULL for current
@@ -420,7 +420,7 @@ $f$ LANGUAGE SQL;
 COMMENT ON FUNCTION col_description(text,text,text)
  IS E'Complement for col_description(text,oid). \nSee https://stackoverflow.com/a/12736192/287948';
 
-CREATE FUNCTION rel_description(
+CREATE or replace FUNCTION rel_description(
   p_relname text, p_schemaname text DEFAULT NULL
 ) RETURNS text AS $f$
 SELECT obj_description((CASE
