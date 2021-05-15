@@ -36,8 +36,7 @@ all:
 	@echo "   sudo usermod -a -G www-data masterUser"
 
 #ini_all: ini_database_list_tmp ini_step1 ini_step2 ini_step3_api ini_step4_optim optim_step1 clean
-ini_all: ini_database_list_tmp ini_step1 ini_step2 optim_step1 clean
-
+ini_all: ini_database_list_tmp ini_step1 ini_step2 ini_step2b_ins clean
 
 
 ini_basics: ini_tmprefresh dir_refresh
@@ -83,6 +82,14 @@ ini_step2: ini_step1 $(opt_lock)/WS-makeStep01.~feito
 	psql $(pg_uri)/ingest2    -c $(iniExts)
 	touch $(opt_lock)/WS-makeStep02.~feito
 	chmod 666 $(opt_lock)/WS-makeStep02.~feito
+
+ini_step2b_ins:
+	psql $(pg_uri)/ingest1    < pubLib.sql
+	psql $(pg_uri)/ingest1    < ingest-step1-ini.sql
+	psql $(pg_uri)/ingest2    < pubLib.sql
+	psql $(pg_uri)/ingest2    < ingest-step1-ini.sql
+	psql $(pg_uri)/dl03t_main < pubLib.sql
+	psql $(pg_uri)/dl03t_main < ingest-step1-ini.sql
 
 ini_step3_api: $(opt_lock)/WS-makeStep02.~feito
 	psql $(pg_uri)/dl03t_main < step01-iniApi.sql

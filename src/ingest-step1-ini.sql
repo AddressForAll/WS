@@ -117,7 +117,7 @@ COMMENT ON FUNCTION ingest.fdw_generate_getclone
 
 ------------
 -- GEOMETRIAS
-/*
+/* !REVISAR CONTROLE DE IDs!
 CREATE TABLE ingest.addr_point(
   ?file_id,
   pack_id int, -- each donated package have only 1 set of points. E.g. pk012 of BR_MG_BHO.
@@ -340,6 +340,7 @@ CREATE or replace FUNCTION ingest.any_load(
     use_tabcols boolean;
   BEGIN
   q_file_id := ingest.getmeta_to_file(p_fileref,p_ftname,p_pack_id);
+  -- falta verificar file not found e md5 null!
   IF 'gid'=ANY(p_tabcols) THEN
     feature_id_col := 'gid';
     p_tabcols = array_remove(p_tabcols,'gid');

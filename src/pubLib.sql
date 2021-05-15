@@ -197,11 +197,12 @@ COMMENT ON FUNCTION pg_read_file(text,boolean)
 ;
 
 CREATE or replace FUNCTION jsonb_pg_stat_file(
-  f text,
+  f text,   -- filename with absolute path
   add_md5 boolean DEFAULT false,
-  missing_ok boolean DEFAULT true
+  -- add_filename  boolean DEFAULT true,
+  missing_ok boolean DEFAULT false
 ) RETURNS JSONb AS $f$
-  -- = indest.get_file_meta().
+  -- = indest.get_file_meta(). Falta emitir erro quando file not found!
   SELECT j
          || jsonb_build_object( 'file',f )
          || CASE WHEN add_md5 THEN jsonb_build_object( 'hash_md5', md5(pg_read_binary_file(f)) ) ELSE '{}'::jsonb END
@@ -209,11 +210,11 @@ CREATE or replace FUNCTION jsonb_pg_stat_file(
   WHERE j IS NOT NULL
 $f$ LANGUAGE SQL IMMUTABLE;
 COMMENT ON FUNCTION jsonb_pg_stat_file
-  IS 'Same as pg_stat_file(), but returning JSONb anb adding option to include MD5 digest.'
+  IS 'Convert pg_stat_file() information in JSONb, adding option to include MD5 digest and filename.'
 ;
 
 CREATE or replace FUNCTION jsonb_read_stat_file(
-  f text,   -- absolute path and filename
+  f text,   -- filename with absolute path
   missing_ok boolean DEFAULT false, -- an error is raised, else (if true), the function returns NULL when file not found.
   add_md5 boolean DEFAULT false
 ) RETURNS JSONb AS $f$
@@ -224,7 +225,7 @@ CREATE or replace FUNCTION jsonb_read_stat_file(
   WHERE j IS NOT NULL
 $f$ LANGUAGE SQL IMMUTABLE;
 COMMENT ON FUNCTION jsonb_read_stat_file(text,boolean,boolean)
-  IS 'Same as pg_read_file() but augmented with JSONb parse and pg_stat_file() metadata.'
+  IS 'Read content and metadata by pg_stat_file(). Like a pg_read_file() augmented with JSONb parse and file information.'
 ;
 
 /*
