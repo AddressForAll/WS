@@ -1,12 +1,13 @@
+## Subindo serviços back-end do WS
 
-## Subindo serviços
-Os códigos-fonte desta pasta são relativos ao  `makefile` de gestão dos "serviços gerais" da Plataforma de Projetos AddressForAll.
-Para a gestão de módulos específicos, por exemplo Projeto de Preservação Digital, rodar o respectivo `makefile`.
+Os códigos-fonte desta pasta são relativos ao `makefile` de gestão dos "serviços gerais" da **Plataforma de Projetos AddressForAll**.
+Para a gestão de módulos específicos, por exemplo *Projeto de Preservação Digital*, rodar o respectivo `makefile`.
 
-Alguns serviços, como o Docker, requerem sudor (ex. `sudo make` ou `sudo docker-compose up dkname`).
+Alguns serviços, como o Docker, requerem usuário *root* (ex. `sudo make` ou `sudo docker-compose up dkname`).
 
 ## Make geral
-`cd src; make`. Apenas indicará no terminal como rodar os principais *targests*. No jardão *make* cada *target* (alvo) é um comando `make _target_`. Sugere-se primeiro rodar aqueles que demandam `sudo` depois os demais.
+
+Usar `cd src; make`. O comando apenas indicará no terminal como rodar os principais *targets*. No jardão *make* cada *target* (alvo) é um comando `make _target_`. Sugere-se primeiro rodar aqueles que demandam `sudo` depois os demais.
 
 * `sudo make ini_basics`: cria pastas de trabalho e uniformiza permissões. Use antes apenas `make` para conferir incluir seu usuário nos grupos.
 * `make ini_all`: inicializa de fato todas as bases de dados no PostreSQL, se estiver devidamente instalado.
@@ -20,11 +21,11 @@ Outros *targets* úteis:
 
 ## Dockers
 
-Apesar de definidos no `makefile`, pode-se realizar o "make" do docker diretamente. Por exemplo `sudo docker-compose start db`.
-Ideal, antes de rodar, é conferir se a imagem PostgREST foi instalada...  
+Apesar de definidos no _makefile_, pode-se realizar o "make" do docker diretamente. Por exemplo `sudo docker-compose start db`.
+Ideal, antes de rodar, é verificar se a imagem PostgREST foi instalada...
 
 O comando mais simples para inicializar tudo é `sudo docker-compose up --detach`.
-Seu equivalente no makefile é `sudo make ini_step6_pgrestUp`, que resulta nas mensagens:
+Seu equivalente no _makefile_ é `sudo make ini_step6_pgrestUp`, que resulta nas mensagens:
 ```
 docker-compose  up -d  pgrestDL03
 Creating src_pgrestDL03_1 ... done
@@ -33,9 +34,10 @@ Creating src_pgrestDL04_1 ... done
 PostgREST Dockers up
 ```
 
-Para editar docker-compose.yml confira https://docs.docker.com/compose/compose-file/
+Para editar `docker-compose.yml` confira https://docs.docker.com/compose/compose-file/
 
 Para gerenciar, comandos mais frequentes neste projeto:
+
 * `sudo docker ps` lista todos os processos de docker rodando.
 * `sudo image ls` lista todas as imagens disponíveis para se instanciar (conferir versão e manter atualizado com ??).
 * `sudo docker-compose down` ["mata"](https://stackoverflow.com/a/51517764/287948) todos os dockers.
