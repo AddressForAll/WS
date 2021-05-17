@@ -6,13 +6,15 @@ Para a gestão de módulos específicos, por exemplo Projeto de Preservação Di
 Alguns serviços, como o Docker, requerem sudor (ex. `sudo make` ou `sudo docker-compose up dkname`).
 
 ## Make geral
-O comando `make all` vai iniciarlizar todas as basees de dados e todos os Dockers.
-**CUIDADO**, apesar de desenvolvido para não destruir bases e serviços, não realizar esse comando sem garantia prévia de backup.
+`cd src; make`. Apenas indicará no terminal como rodar os principais *targests*. No jardão *make* cada *target* (alvo) é um comando `make _target_`. Sugere-se primeiro rodar aqueles que demandam `sudo` depois os demais.
 
+* `sudo make ini_basics`: cria pastas de trabalho e uniformiza permissões. Use antes apenas `make` para conferir incluir seu usuário nos grupos.
+* `make ini_all`: inicializa de fato todas as bases de dados no PostreSQL, se estiver devidamente instalado.
+* `sudo make ini_step6_pgrestUp`: inicialização dos Dockers.
 
-## Makes específicos
-Alguns exemplos:
-* `make fulano` descrição ....
+Apesar de desenvolvido para não destruir bases e serviços, **CUIDADO**, não realizar *makes* sem garantia prévia de *backup*.
+
+Outros *targets* úteis:
 * `make status | more` lista status das bases de dados, todas elas.
 * ...
 

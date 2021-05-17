@@ -4,6 +4,8 @@
 
 CREATE extension IF NOT EXISTS adminpack;
 
+-- -- -- -- -- -- -- -- -- -- --
+-- Helper functions: avoid.
 
 CREATE or replace FUNCTION iIF(
     condition boolean,       -- IF condition
@@ -14,7 +16,7 @@ CREATE or replace FUNCTION iIF(
   SELECT CASE WHEN condition THEN true_result ELSE false_result END
 $f$  LANGUAGE SQL IMMUTABLE;
 COMMENT ON FUNCTION iif
-  IS 'Immediate IF. Sintax sugar for the most frequent CASE WHEN THEN ELSE END.'
+  IS 'Immediate IF. Sintax sugar for the most frequent CASE-WHEN. Avoid with text, need explicit cast.'
 ;
 
 -- -- -- -- -- -- -- -- -- -- --
@@ -105,68 +107,6 @@ COMMENT ON FUNCTION jsonb_objslice(text,jsonb,text)
   IS 'Get the key as encapsulated object, with same or changing name.'
 ;
 
-/* LIXO:
-
--- -- -- -- -- -- -- -- -- -- --
--- GeoJSON functions
-
-CREATE or replace FUNCTION ST_GeomFromGeoJSON_sanitized(
-  p_j  JSONb, p_srid int DEFAULT 4326
-) RETURNS geometry AS $f$
-  SELECT g FROM (
-   SELECT  ST_GeomFromGeoJSON(g::text)
-   FROM (
-   SELECT CASE
-    WHEN p_j IS NULL OR p_j='{}'::JSONb OR jsonb_typeof(p_j)!='object'
-        OR NOT(p_j?'type')
-        OR  (NOT(p_j?'crs') AND (p_srid<1 OR p_srid>998999) )
-        OR p_j->>'type' NOT IN ('Feature', 'FeatureCollection', 'Position', 'Point', 'MultiPoint',
-         'LineString', 'MultiLineString', 'Polygon', 'MultiPolygon', 'GeometryCollection')
-        THEN NULL
-    WHEN NOT(p_j?'crs')  OR 'EPSG0'=p_j->'crs'->'properties'->>'name'
-        THEN p_j || ('{"crs":{"type":"name","properties":{"name":"EPSG:'|| p_srid::text ||'"}}}')::jsonb
-    ELSE p_j
-    END
-   ) t2(g)
-   WHERE g IS NOT NULL
-  ) t(g)
-  WHERE ST_IsValid(g)
-$f$ LANGUAGE SQL IMMUTABLE;
-COMMENT ON FUNCTION file_get_contents
- IS $$ Do ST_GeomFromGeoJSON() with correct SRID. OLD geojson_sanitize(), as https://gis.stackexchange.com/a/60945/7505 $$;
-
-CREATE or replace FUNCTION ST_AsGeoJSONb( -- ST_AsGeoJSON_complete
-  -- st_asgeojsonb(geometry, integer, integer, bigint, jsonb
-  p_geom geometry,
-  p_decimals int default 6,
-  p_options int default 1,  -- 1=better (implicit WGS84) tham 5 (explicit)
-  p_id text default null,
-  p_properties jsonb default null,
-  p_name text default null,
-  p_title text default null,
-  p_id_as_int boolean default false
-) RETURNS JSONb AS $f$
--- Do ST_AsGeoJSON() adding id, crs, properties, name and title
-  SELECT ST_AsGeoJSON(p_geom,p_decimals,p_options)::jsonb
-       || CASE
-          WHEN p_properties IS NULL OR jsonb_typeof(p_properties)!='object' THEN '{}'::jsonb
-          ELSE jsonb_build_object('properties',p_properties)
-          END
-       || CASE
-          WHEN p_id IS NULL THEN '{}'::jsonb
-          WHEN p_id_as_int THEN jsonb_build_object('id',p_id::bigint)
-          ELSE jsonb_build_object('id',p_id)
-          END
-       || CASE WHEN p_name IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('name',p_name) END
-       || CASE WHEN p_title IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('title',p_title) END
-$f$ LANGUAGE SQL IMMUTABLE;
-COMMENT ON FUNCTION ST_AsGeoJSONb IS $$
-  Enhances ST_AsGeoJSON() PostGIS function.
-  Use ST_AsGeoJSONb( geom, 6, 1, osm_id::text, stable.element_properties(osm_id) - 'name:' ).
-$$;
-
-*/
-
 -- -- -- -- -- -- -- -- -- -- --
 -- Extends native functions:
 
@@ -203,6 +143,7 @@ CREATE or replace FUNCTION jsonb_pg_stat_file(
   missing_ok boolean DEFAULT false
 ) RETURNS JSONb AS $f$
   -- = indest.get_file_meta(). Falta emitir erro quando file not found!
+  -- usar (j->'size')::bigint+1 como pg_read(size)!  para poder usar missing nele.
   SELECT j
          || jsonb_build_object( 'file',f )
          || CASE WHEN add_md5 THEN jsonb_build_object( 'hash_md5', md5(pg_read_binary_file(f)) ) ELSE '{}'::jsonb END
@@ -226,70 +167,6 @@ CREATE or replace FUNCTION jsonb_read_stat_file(
 $f$ LANGUAGE SQL IMMUTABLE;
 COMMENT ON FUNCTION jsonb_read_stat_file(text,boolean,boolean)
   IS 'Read content and metadata by pg_stat_file(). Like a pg_read_file() augmented with JSONb parse and file information.'
-;
-
-/*
-CREATE OR REPLACE FUNCTION st_read_geojson(
-  p_path text,
-  p_ext text DEFAULT '.geojson',
-  p_basepath text DEFAULT '/opt/gits/city-codes/data/dump_osm/'::text,
-  p_srid int DEFAULT 4326
-) RETURNS geometry AS $f$
-  SELECT CASE WHEN length(s)<30 THEN NULL ELSE ST_GeomFromGeoJSON_sanitized(s::jsonb) END
-  FROM  ( SELECT file_get_contents(p_basepath||p_path||p_ext) ) t(s)
-$f$ LANGUAGE SQL IMMUTABLE;
-COMMENT ON FUNCTION file_get_contents
- IS 'Gambiarra para ler geojson, até testar a melhor opção com funções nativas pg'
-;
-*/
-
-CREATE or replace FUNCTION geojson_readfile_headers(
-    f text,   -- absolute path and filename
-    missing_ok boolean DEFAULT false -- an error is raised, else (if true), the function returns NULL when file not found.
-) RETURNS JSONb AS $f$
-  SELECT j || jsonb_build_object( 'file',f,  'content_header', pg_read_file(f)::JSONB - 'features' )
-  FROM to_jsonb( pg_stat_file(f,missing_ok) ) t(j)
-  WHERE j IS NOT NULL
-$f$ LANGUAGE SQL;
-
--- drop  FUNCTION geojson_readfile_features;
-CREATE or replace FUNCTION geojson_readfile_features(f text) RETURNS TABLE (
-  fname text, feature_id int, geojson_type text,
-  feature_type text, properties jsonb, geom geometry
-) AS $f$
-   SELECT fname, (ROW_NUMBER() OVER())::int, -- feature_id,
-          geojson_type, feature->>'type',    -- feature_type,
-          jsonb_objslice('name',feature) || feature->'properties', -- properties and name.
-          -- see CRS problems at https://gis.stackexchange.com/questions/60928/
-          ST_GeomFromGeoJSON(  crs || (feature->'geometry')  ) AS geom
-   FROM (
-      SELECT j->>'file' AS fname,
-             jsonb_objslice('crs',j) AS crs,
-             j->>'type' AS geojson_type,
-             jsonb_array_elements(j->'features') AS feature
-      FROM ( SELECT pg_read_file(f)::JSONb AS j ) jfile
-   ) t2
-$f$ LANGUAGE SQL;
-COMMENT ON FUNCTION geojson_readfile_features(text)
-  IS 'Reads a small GeoJSON file and transforms it into a table with a geometry column.'
-;
-
-CREATE or replace FUNCTION geojson_readfile_features_jgeom(file text, file_id int default null) RETURNS TABLE (
-  file_id int, feature_id int, feature_type text, properties jsonb, jgeom jsonb
-) AS $f$
-   SELECT file_id, (ROW_NUMBER() OVER())::int AS subfeature_id,
-          subfeature->>'type' AS subfeature_type,
-          subfeature->'properties' AS properties,
-          crs || subfeature->'geometry' AS jgeom
-   FROM (
-      SELECT j->>'type' AS geojson_type,
-             jsonb_objslice('crs',j) AS crs,
-             jsonb_array_elements(j->'features') AS subfeature
-      FROM ( SELECT pg_read_file(file)::JSONb AS j ) jfile
-   ) t2
-$f$ LANGUAGE SQL;
-COMMENT ON FUNCTION geojson_readfile_features_jgeom(text,int)
-  IS 'Reads a big GeoJSON file and transforms it into a table with a json-geometry column.'
 ;
 
 CREATE or replace FUNCTION volat_file_write(
@@ -366,7 +243,6 @@ $f$ LANGUAGE SQL IMMUTABLE;
 --
 -- select jsonb_keys_to_vals(x,array['SIGLA_TIPO_LOGRADOURO','NOME_LOGRADOURO','NUMERO_IMOVEL','LETRA_IMOVEL','GEOMETRIA'])
 -- from pg_csv_head_tojsonb('/tmp/pg_io/ENDERECO.csv') t(x);
-
 
 -- -- -- -- -- -- -- -- -- -- -- -- --
 -- Catalog's Regclass helper functions

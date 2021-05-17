@@ -18,7 +18,8 @@ ALTER database template1 is_template=true;\
 arr=("DL03t_main" "DL04s_main" "DL01t_osm" "DL02s_osm" "ingest1" "ingest2" "sandbox")
 for db in "${arr[@]}"
 do
-  echo "-- $db:"
+  echo
+  echo "-------------- $db: -------------"
   if  grep -iqw "$db" /tmp/pg_io/database_list_tmp.txt ; then
       echo " (base já existe)"
   else

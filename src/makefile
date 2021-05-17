@@ -11,8 +11,10 @@ pg_uri   =postgres://postgres@localhost
 iniExts  ="CREATE EXTENSION IF NOT EXISTS hstore; CREATE EXTENSION IF NOT EXISTS postgis;"
 
 ## -- -- Functions a revisar -- --
+## pode ser INCLUDE!
 
 define ITERATE_DATABASES
+# revisar conforme mk-ini_step1.sh que precisaria ser função de array.
 arr_databases=("DL03t_main" "DL04s_main" "DL01t_osm" "DL02s_osm" "ingest1" "ingest2" "sandbox") \
 for db in "${arr_databases[@]}" \
 do \
@@ -39,7 +41,7 @@ all:
 ini_all: ini_database_list_tmp ini_step1 ini_step2 ini_step2b_ins clean
 
 
-ini_basics: ini_tmprefresh dir_refresh
+ini_basics: dir_refresh ini_tmprefresh
 		@echo "-- ok ini basics --"
 
 ini_tmprefresh:  # sudor
@@ -55,13 +57,14 @@ ini_tmprefresh:  # sudor
 	chown -R postgres:postgres $(pg_io)/
 	mkdir -p $(opt_lock)
 	chmod 777  $(opt_lock)
+	@echo "Digite ^C para finalizar ou ENTER para apagar todas as locks *~feito"
+	@read _ENTER_
+	@# o certo seria rm condicional!
+	rm -f $(opt_lock)/*~feito || true
 	touch $(opt_lock)/tmp-makeStep00.~feito
 	chown -R postgres:www-data $(opt_lock)/
 	chmod -f 666  $(opt_lock)/*.* || true
 	@echo "... feito o que era preciso como root."
-	@echo "Digite ^C para finalizar ou ENTER para apagar todas as locks *~feito"
-	@read _ENTER_
-	rm $(opt_lock)/*~feito
 
 ini_database_list_tmp: $(opt_lock)/tmp-makeStep00.~feito  # not sudor
 	@echo "!run before:   sudo make ini_tmprefresh"
@@ -83,12 +86,15 @@ ini_step2: ini_step1 $(opt_lock)/WS-makeStep01.~feito
 	touch $(opt_lock)/WS-makeStep02.~feito
 	chmod 666 $(opt_lock)/WS-makeStep02.~feito
 
-ini_step2b_ins:
+ini_step2b_ins: # revisar conforme mk-ini_step1.sh que precisaria ser função de array.
 	psql $(pg_uri)/ingest1    < pubLib.sql
+	psql $(pg_uri)/ingest1    < sys_pubLib.sql
 	psql $(pg_uri)/ingest1    < ingest-step1-ini.sql
 	psql $(pg_uri)/ingest2    < pubLib.sql
+	psql $(pg_uri)/ingest2    < sys_pubLib.sql
 	psql $(pg_uri)/ingest2    < ingest-step1-ini.sql
 	psql $(pg_uri)/dl03t_main < pubLib.sql
+	psql $(pg_uri)/dl03t_main < sys_pubLib.sql
 	psql $(pg_uri)/dl03t_main < ingest-step1-ini.sql
 
 ini_step3_api: $(opt_lock)/WS-makeStep02.~feito
@@ -153,7 +159,7 @@ status_docker:
 	@echo "restart with 'sudo docker container restart (name)'"
 
 status_base:
-	psql -c "\l"
+	psql $(pg_uri) -c "\l"
 
 status_schEtc:
 	@echo "-- database ingest1:"
@@ -171,10 +177,11 @@ status_schProd:
 	psql $(pg_uri)/dl04s_main -c "\dn"
 
 status_disk_abuse:
-	@echo "-- -- -- CHECK disk abuse -- -- --"
-	du -h $(gits)  | grep -v M  | grep -v K
-	du -h /var/www   | grep -v M  | grep -v K
-	du -h /tmp   | grep -v M  | grep -v K
+	@echo "-- -- -- CHECK disk usage ABUSE -- -- --"
+	@(du -h $(gits)  | grep -v "^[0-9][0-9,\.]*[KM]") || true
+	@(du -h /var/www | grep -v "^[0-9][0-9,\.]*[KM]") || true
+	@(du -h /tmp     | grep -v "^[0-9][0-9,\.]*[KM]") || true
+	@echo "... if no line, it is ok!"
 
 # # #
 dir_ini:
@@ -202,7 +209,7 @@ dir_refresh:
 	find $(gits)/* -type f -exec chmod 664 {} \+  # ou 674 ou 655
 	#chmod -R a-x,a=rX,u+w $(gits)/*
 	chmod 777 $(opt_lock)
-	chmod -R a-x,a=rX,u+w $(opt_lock)/*
+	chmod -Rf a-x,a=rX,u+w $(opt_lock)/* || true
 
 ## DOC AND HELP
 #

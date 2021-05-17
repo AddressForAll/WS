@@ -11,23 +11,7 @@ CREATE SERVER    IF NOT EXISTS files FOREIGN DATA WRAPPER file_fdw;
 CREATE schema    IF NOT EXISTS ingest;
 CREATE schema    IF NOT EXISTS tmp_orig;
 
--- -- -- -- --
--- PostGIS complements, !future PubLib-postgis
-
-INSERT into spatial_ref_sys (srid, auth_name, auth_srid, proj4text, srtext)
- -- POSTGIS: SRID on demand, see Eclusa and Digital Preservation project demands.
- -- see https://wiki.openstreetmap.org/wiki/Brazil/Oficial/Carga#Adaptando_SRID
- -- after max(srid)=900913
-VALUES
-  ( 952013, 'BR-RS-POA', null,
-   '+proj=tmerc +lat_0=0 +lon_0=-51 +k=0.999995 +x_0=300000 +y_0=5000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs',
-   null
-  ),
-  ( 952019, 'BR:IBGE', 52019,
-   '+proj=aea +lat_0=-12 +lon_0=-54 +lat_1=-2 +lat_2=-22 +x_0=5000000 +y_0=10000000 +ellps=WGS84 +units=m +no_defs',
-   'PROJCS["Conica_Equivalente_de_Albers_Brasil",      GEOGCS["GCS_SIRGAS2000",          DATUM["D_SIRGAS2000",              SPHEROID["Geodetic_Reference_System_of_1980",6378137,298.2572221009113]],          PRIMEM["Greenwich",0],          UNIT["Degree",0.017453292519943295]],      PROJECTION["Albers"],      PARAMETER["standard_parallel_1",-2],      PARAMETER["standard_parallel_2",-22],      PARAMETER["latitude_of_origin",-12],      PARAMETER["central_meridian",-54],      PARAMETER["false_easting",5000000],      PARAMETER["false_northing",10000000],      UNIT["Meter",1]]'
-  )
-ON CONFLICT DO NOTHING;
+-- float is float4=real: review definitions? real  is indexable, use it at tables.
 
 -- -- --
 -- SQL and bash generators (optim-ingest submodule)
@@ -134,12 +118,12 @@ COMMENT ON TABLE ingest.addr_point
 ;
 */
 CREATE TABLE ingest.via_line(
-  pack_id int NOT NULL, -- REFERENCES optim.donatedPack(pack_id),
+  pck_id float NOT NULL, -- REFERENCES optim.donatedPack(pck_id),
   vianame text,
   is_informal boolean default false, -- non-official name (loteametos com ruas ainda sem nome)
   geom geometry,
   info JSONb,
-  UNIQUE(pack_id,geom)
+  UNIQUE(pck_id,geom)
 );
 COMMENT ON TABLE ingest.via_line
   IS 'Ingested via lines (street axis) of one or more packages, temporary data (not need package-version).'
@@ -201,17 +185,23 @@ INSERT INTO ingest.feature_type VALUES
 -- copy ( select lpad(ftid::text,2,'0') ftid, ftname, description, info->>'description_pt' as description_pt, array_to_string(jsonb_array_totext(info->'synonymous_pt'),'; ') as synonymous_pt from ingest.feature_type where geomtype='class' ) to '/tmp/pg_io/featur_type_classes.csv' CSV HEADER;
 -- copy ( select lpad(ftid::text,2,'0') ftid, ftname,geomtype, iif(need_join,'yes'::text,'no') as need_join, description  from ingest.feature_type where geomtype!='class' ) to '/tmp/pg_io/featur_types.csv' CSV HEADER;
 
-
 -- DROP TABLE ingest.layer_file;
 CREATE TABLE ingest.layer_file (
-  pack_id int NOT NULL, -- package file ID, not controled here. Talvez seja packVers (package and version)
+  pck_id float4 NOT NULL CHECK( digpreserv_packid_isvalid(pck_id) ), -- package file ID, not controled here. Talvez seja packVers (package and version) ou pck_id com float
   file_id serial NOT NULL PRIMARY KEY,
   ftid smallint NOT NULL REFERENCES ingest.feature_type(ftid),
   file_type text,  -- csv, geojson, shapefile, etc.
   proc_step int DEFAULT 1,  -- current status of the "processing steps", 1=started, 2=loaded, ...=finished
   hash_md5 text NOT NULL, -- or "size-md5" as really unique string
   file_meta jsonb,
-  UNIQUE(hash_md5) -- or (ftid,hash_md5)?  não faz sentido usar duas vezes se existe _full.
+  UNIQUE(hash_md5) -- or size-MD5 or (ftid,hash_md5)?  não faz sentido usar duas vezes se existe _full.
+);
+
+CREATE TABLE ingest.feature_asis_report (
+  file_id int NOT NULL REFERENCES ingest.layer_file(file_id),
+  feature_id int NOT NULL,
+  info jsonb,
+  UNIQUE(file_id,feature_id)
 );
 
 CREATE TABLE ingest.tmp_geojson_feature (
@@ -230,6 +220,8 @@ CREATE TABLE ingest.feature_asis (
   geom geometry,
   UNIQUE(file_id,feature_id)
 );
+
+
 
 ----------------
 ----------------
@@ -288,24 +280,24 @@ $f$ LANGUAGE PLpgSQL;
 CREATE or replace FUNCTION ingest.getmeta_to_file(
   p_file text,
   p_ftid int,
-  p_pack_id int,
+  p_pck_id float,
   p_ftype text DEFAULT NULL
 ) RETURNS int AS $f$
- INSERT INTO ingest.layer_file(pack_id,ftid,file_type,hash_md5,file_meta)
-   SELECT p_pack_id, p_ftid, ftype, fmeta->>'hash_md5', (fmeta - 'hash_md5')
+ INSERT INTO ingest.layer_file(pck_id,ftid,file_type,hash_md5,file_meta)
+   SELECT p_pck_id, p_ftid, ftype, fmeta->>'hash_md5', (fmeta - 'hash_md5')
    FROM (
        SELECT COALESCE( p_ftype, substring(p_file from '[^\.]+$') ) as ftype,
           jsonb_pg_stat_file(p_file,true) as fmeta
   ) t
  RETURNING file_id;
 $f$ LANGUAGE SQL;
-COMMENT ON FUNCTION ingest.getmeta_to_file(text,int,int,text)
+COMMENT ON FUNCTION ingest.getmeta_to_file(text,int,float,text)
   IS 'Reads a small GeoJSON file and transforms it into a table with a geometry column.'
 ;
 CREATE or replace FUNCTION ingest.getmeta_to_file(
   p_file text,
   p_ftname text, -- define o layer... um file pode ter mais de um layer??
-  p_pack_id int,
+  p_pck_id float,
   p_ftype text DEFAULT NULL
 ) RETURNS int AS $wrap$
     SELECT ingest.getmeta_to_file(
@@ -315,7 +307,7 @@ CREATE or replace FUNCTION ingest.getmeta_to_file(
       $4
     );
 $wrap$ LANGUAGE SQL;
-COMMENT ON FUNCTION ingest.getmeta_to_file(text,text,int,text)
+COMMENT ON FUNCTION ingest.getmeta_to_file(text,text,float,text)
   IS 'Wrap para ingest.getmeta_to_file() usando ftName ao invés de ftID.'
 ;
 -- ex. select ingest.getmeta_to_file('/tmp/a.csv',3,555);
@@ -327,7 +319,7 @@ CREATE or replace FUNCTION ingest.any_load(
     p_fileref text,  -- apenas referencia para ingest.layer_file
     p_ftname text,   -- featureType of layer... um file pode ter mais de um layer??
     p_tabname text,  -- tabela temporária de ingestáo
-    p_pack_id int,   -- id do package da Preservação.
+    p_pck_id float,   -- id do package da Preservação.
     p_tabcols text[] DEFAULT NULL, -- lista de atributos, ou só geometria
     p_geom_name text DEFAULT 'geom',
     p_to4326 boolean DEFAULT true -- on true converts SRID to 4326 .
@@ -339,7 +331,7 @@ CREATE or replace FUNCTION ingest.any_load(
     feature_id_col text;
     use_tabcols boolean;
   BEGIN
-  q_file_id := ingest.getmeta_to_file(p_fileref,p_ftname,p_pack_id);
+  q_file_id := ingest.getmeta_to_file(p_fileref,p_ftname,p_pck_id);
   -- falta verificar file not found e md5 null!
   IF 'gid'=ANY(p_tabcols) THEN
     feature_id_col := 'gid';
