@@ -19,6 +19,14 @@ COMMENT ON FUNCTION iif
   IS 'Immediate IF. Sintax sugar for the most frequent CASE-WHEN. Avoid with text, need explicit cast.'
 ;
 
+CREATE or replace FUNCTION array_length(a anyarray) RETURNS integer AS $wrap$
+   SELECT array_length(a,1)
+$wrap$  LANGUAGE SQL IMMUTABLE;
+COMMENT ON FUNCTION array_length(anyarray)
+  IS 'Wrap for array_length(A,1).'
+;
+
+
 -- -- -- -- -- -- -- -- -- -- --
 -- Complementar CAST functions:
 
@@ -308,3 +316,19 @@ SELECT obj_description((CASE
 $f$ LANGUAGE SQL;
 COMMENT ON FUNCTION rel_description(text,text)
  IS E'Alternative shortcut to obj_description(). \nSee https://stackoverflow.com/a/12736192/287948';
+
+
+CREATE or replace FUNCTION rel_columns(
+ p_relname text, p_schemaname text DEFAULT NULL
+) RETURNS text[] AS $f$
+   SELECT --attrelid::regclass AS tbl,  atttypid::regtype  AS datatype
+        array_agg(attname ORDER  BY attnum)
+   FROM   pg_attribute
+   WHERE  attrelid = (CASE
+             WHEN strpos($1, '.')>0 THEN $1
+             WHEN $2 IS NULL THEN 'public.'||$1
+             ELSE $2||'.'||$1
+          END)::regclass
+   AND    attnum > 0
+   AND    NOT attisdropped
+$f$ LANGUAGE SQL;

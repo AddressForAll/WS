@@ -276,15 +276,17 @@ CREATE or replace FUNCTION ingest.geojson_load(
 $f$ LANGUAGE PLpgSQL;
 
 
-
 CREATE or replace FUNCTION ingest.getmeta_to_file(
   p_file text,
   p_ftid int,
   p_pck_id float,
   p_ftype text DEFAULT NULL
+  -- ,p_size_min int DEFAULT 5
 ) RETURNS int AS $f$
  INSERT INTO ingest.layer_file(pck_id,ftid,file_type,hash_md5,file_meta)
-   SELECT p_pck_id, p_ftid, ftype, fmeta->>'hash_md5', (fmeta - 'hash_md5')
+   SELECT p_pck_id, p_ftid, ftype,
+          CASE WHEN (fmeta->'size')::int<5 OR (fmeta->>'hash_md5')='' THEN NULL ELSE fmeta->>'hash_md5' END, --guard
+          (fmeta - 'hash_md5')
    FROM (
        SELECT COALESCE( p_ftype, substring(p_file from '[^\.]+$') ) as ftype,
           jsonb_pg_stat_file(p_file,true) as fmeta
@@ -292,7 +294,7 @@ CREATE or replace FUNCTION ingest.getmeta_to_file(
  RETURNING file_id;
 $f$ LANGUAGE SQL;
 COMMENT ON FUNCTION ingest.getmeta_to_file(text,int,float,text)
-  IS 'Reads a small GeoJSON file and transforms it into a table with a geometry column.'
+  IS 'Reads file metadata and inserts it into ingest.layer_file.'
 ;
 CREATE or replace FUNCTION ingest.getmeta_to_file(
   p_file text,
@@ -320,7 +322,7 @@ CREATE or replace FUNCTION ingest.any_load(
     p_ftname text,   -- featureType of layer... um file pode ter mais de um layer??
     p_tabname text,  -- tabela temporária de ingestáo
     p_pck_id float,   -- id do package da Preservação.
-    p_tabcols text[] DEFAULT NULL, -- lista de atributos, ou só geometria
+    p_tabcols text[] DEFAULT NULL, -- array[]=tudo, senão lista de atributos de p_tabname, ou só geometria
     p_geom_name text DEFAULT 'geom',
     p_to4326 boolean DEFAULT true -- on true converts SRID to 4326 .
 ) RETURNS text AS $f$
@@ -332,14 +334,21 @@ CREATE or replace FUNCTION ingest.any_load(
     use_tabcols boolean;
   BEGIN
   q_file_id := ingest.getmeta_to_file(p_fileref,p_ftname,p_pck_id);
-  -- falta verificar file not found e md5 null!
+  IF p_tabcols=array[] THEN  -- condição para solicitar todas as colunas
+    p_tabcols = rel_columns(p_tabname);
+  END IF;
   IF 'gid'=ANY(p_tabcols) THEN
     feature_id_col := 'gid';
-    p_tabcols = array_remove(p_tabcols,'gid');
+    p_tabcols := array_remove(p_tabcols,'gid');
   ELSE
-    feature_id_col := 'row_number() OVER () as gid';
+    feature_id_col := 'row_number() OVER () AS gid';
   END IF;
-  use_tabcols := p_tabcols is not NULL AND array_length(p_tabcols,1)>0;
+  IF p_tabcols is not NULL AND array_length(p_tabcols,1)>0 THEN
+    p_tabcols   := sql_parse_selectcols(p_tabcols); -- clean p_tabcols
+    use_tabcols := true;
+  ELSE
+    use_tabcols := false;
+  END IF;
   q_query := format(
       $$
       WITH ins2 AS (
@@ -373,10 +382,25 @@ CREATE or replace FUNCTION ingest.any_load(
   RETURN q_ret;
   END;
 $f$ LANGUAGE PLpgSQL;
-COMMENT ON FUNCTION ingest.any_load
+COMMENT ON FUNCTION ingest.any_load(text,text,text,float,text[],text,boolean)
   IS 'Load (into ingest.feature_asis) shapefile or any other non-GeoJSON, of a separated table.'
 ;
 -- ex. SELECT ingest.any_load('/tmp/pg_io/NRO_IMOVEL.shp','geoaddress_none','pk027_geoaddress1',27,array['gid','textstring']);
+
+CREATE or replace FUNCTION ingest.any_load(
+    p_fileref text,  -- 1. apenas referencia para ingest.layer_file
+    p_ftname text,   -- 2. featureType of layer... um file pode ter mais de um layer??
+    p_tabname text,  -- 3. tabela temporária de ingestáo
+    p_pck_id text,   -- 4. id do package da Preservação no formato "a.b".
+    p_tabcols text[] DEFAULT NULL,   -- 5. lista de atributos, ou só geometria
+    p_geom_name text DEFAULT 'geom', -- 6
+    p_to4326 boolean DEFAULT true    -- 7. on true converts SRID to 4326 .
+) RETURNS text AS $wrap$
+   SELECT ingest.any_load($1, $2, $3, digpreserv_packid_to_float($4), $5, $6, $7)
+$wrap$ LANGUAGE SQL;
+COMMENT ON FUNCTION ingest.any_load(text,text,text,text,text[],text,boolean)
+  IS 'Wrap to ingest.any_load(1,2,3,4=float).'
+;
 
 -- INSERT GEOMETRIA QQ com referencia a arquivo e layer
 -- FILE não tem ftype!

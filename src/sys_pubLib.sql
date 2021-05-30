@@ -134,6 +134,31 @@ COMMENT ON FUNCTION geojson_readfile_features_jgeom(text,int)
   IS 'Reads a big GeoJSON file and transforms it into a table with a json-geometry column.'
 ;
 
+--------
+
+CREATE or replace FUNCTION sql_parse_selectcols_simple(s text) RETURNS text AS $f$
+   SELECT CASE
+       WHEN $1 IS NULL OR p[1]='' OR array_length(p,1)>2 THEN NULL
+       WHEN array_length(p,1)=1 THEN p[1]
+       ELSE p[1] ||' AS '||p[2]
+       END
+   FROM (SELECT regexp_split_to_array(trim($1),'\s+') p) t
+$f$ LANGUAGE SQL;
+
+CREATE or replace FUNCTION sql_parse_selectcols(selcols text[]) RETURNS text[] AS $f$
+   SELECT array_agg( CASE
+      WHEN $1 IS NULL OR p_as IS NULL OR array_length(p_as,1)=0 OR array_length(p_as,1)>2 THEN NULL
+      WHEN array_length(p_as,1)=2 THEN p_as[1] ||' AS '||p_as[2]
+      ELSE sql_parse_selectcols_simple(p_as[1])
+      END )
+   FROM (
+     SELECT i,regexp_split_to_array(x, '\s+as\s+','i') p_as
+     FROM UNNEST($1) WITH ORDINALITY t1(x,i)
+   ) t2
+$f$ LANGUAGE SQL;
+
+-- SELECT sql_parse_selectcols(array['row_number() OVER () as gid','x','y as z']);
+
 /* LIXO, VERIFCAR SE PODE REMOVER DAQUI:
 -- -- -- -- -- -- -- -- -- -- --
 -- GeoJSON functions
