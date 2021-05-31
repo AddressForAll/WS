@@ -72,9 +72,7 @@ ini_database_list_tmp: $(opt_lock)/tmp-makeStep00.~feito  # not sudor
 	chmod 666  $(pg_io)/database_list_tmp.txt
 
 ini_step1: ini_database_list_tmp
-	#rm $(opt_lock)/*~feito
 	bash mk-ini_step1.sh
-	#bug $(call ITERATE_DATABASES)
 	touch $(opt_lock)/WS-makeStep01.~feito
 	chmod 666 $(opt_lock)/WS-makeStep01.~feito
 
@@ -87,12 +85,15 @@ ini_step2: ini_step1 $(opt_lock)/WS-makeStep01.~feito
 	chmod 666 $(opt_lock)/WS-makeStep02.~feito
 
 ini_step2b_ins: # revisar conforme mk-ini_step1.sh que precisaria ser função de array.
+	@echo "------- ingest1 REDO ---------"
 	psql $(pg_uri)/ingest1    < pubLib.sql
 	psql $(pg_uri)/ingest1    < sys_pubLib.sql
 	psql $(pg_uri)/ingest1    < ingest-step1-ini.sql
+	@echo "------- ingest2 REDO ---------"
 	psql $(pg_uri)/ingest2    < pubLib.sql
 	psql $(pg_uri)/ingest2    < sys_pubLib.sql
 	psql $(pg_uri)/ingest2    < ingest-step1-ini.sql
+	@echo "------- dl03t_main REDO ---------"
 	psql $(pg_uri)/dl03t_main < pubLib.sql
 	psql $(pg_uri)/dl03t_main < sys_pubLib.sql
 	psql $(pg_uri)/dl03t_main < ingest-step1-ini.sql

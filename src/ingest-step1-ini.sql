@@ -334,7 +334,7 @@ CREATE or replace FUNCTION ingest.any_load(
     use_tabcols boolean;
   BEGIN
   q_file_id := ingest.getmeta_to_file(p_fileref,p_ftname,p_pck_id);
-  IF p_tabcols=array[] THEN  -- condição para solicitar todas as colunas
+  IF p_tabcols=array[]::text[] THEN  -- condição para solicitar todas as colunas
     p_tabcols = rel_columns(p_tabname);
   END IF;
   IF 'gid'=ANY(p_tabcols) THEN
@@ -349,6 +349,9 @@ CREATE or replace FUNCTION ingest.any_load(
   ELSE
     use_tabcols := false;
   END IF;
+  IF 'geom'=ANY(p_tabcols) THEN
+    p_tabcols := array_remove(p_tabcols,'geom');
+  END IF;
   q_query := format(
       $$
       WITH ins2 AS (
@@ -361,7 +364,7 @@ CREATE or replace FUNCTION ingest.any_load(
                 END
          FROM (
            SELECT %s, %s as properties,
-                  %s AS geom
+                  %s -- geom
            FROM %s %s
          ) t1
         RETURNING 1
@@ -372,7 +375,7 @@ CREATE or replace FUNCTION ingest.any_load(
     q_file_id, iif(p_to4326,'true'::text,'false'),
     feature_id_col,
     iIF( use_tabcols, 'to_jsonb(subq)'::text, E'\'{}\'::jsonb' ),
-    p_geom_name,
+    CASE WHEN lower(p_geom_name)='geom' THEN 'geom' ELSE p_geom_name||' AS geom' END,
     p_tabname,
     iIF( use_tabcols, ', LATERAL (SELECT '|| array_to_string(p_tabcols,',') ||') subq',  ''::text ),
     q_file_id,
@@ -386,6 +389,12 @@ COMMENT ON FUNCTION ingest.any_load(text,text,text,float,text[],text,boolean)
   IS 'Load (into ingest.feature_asis) shapefile or any other non-GeoJSON, of a separated table.'
 ;
 -- ex. SELECT ingest.any_load('/tmp/pg_io/NRO_IMOVEL.shp','geoaddress_none','pk027_geoaddress1',27,array['gid','textstring']);
+
+/*
+# falta o assert das assinaturas, na preservação digital precisaria ser baseado em diff.
+# as assinaturas dependem do tipo de geometria (ponto, linha ou rea), requerem função especializada (comprovando reprodutibilidade).
+# função ingest.any_load deveria converter lista de cols conforme padrões geoaddress_none
+*/
 
 CREATE or replace FUNCTION ingest.any_load(
     p_fileref text,  -- 1. apenas referencia para ingest.layer_file
@@ -401,6 +410,8 @@ $wrap$ LANGUAGE SQL;
 COMMENT ON FUNCTION ingest.any_load(text,text,text,text,text[],text,boolean)
   IS 'Wrap to ingest.any_load(1,2,3,4=float).'
 ;
+
+
 
 -- INSERT GEOMETRIA QQ com referencia a arquivo e layer
 -- FILE não tem ftype!
