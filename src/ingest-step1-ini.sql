@@ -185,6 +185,22 @@ INSERT INTO ingest.feature_type VALUES
 -- copy ( select lpad(ftid::text,2,'0') ftid, ftname, description, info->>'description_pt' as description_pt, array_to_string(jsonb_array_totext(info->'synonymous_pt'),'; ') as synonymous_pt from ingest.feature_type where geomtype='class' ) to '/tmp/pg_io/featur_type_classes.csv' CSV HEADER;
 -- copy ( select lpad(ftid::text,2,'0') ftid, ftname,geomtype, iif(need_join,'yes'::text,'no') as need_join, description  from ingest.feature_type where geomtype!='class' ) to '/tmp/pg_io/featur_types.csv' CSV HEADER;
 
+CREATE VIEW ingest.vw01info_feature_type AS
+  SELECT ftid, ftname, geomtype, need_join, description,
+       COALESCE(f.info,'{}'::jsonb) || (
+         SELECT to_jsonb(t2) FROM (
+           SELECT c.ftid as class_ftid, c.ftname as class_ftname,
+                  c.description as class_description,
+                  c.info as class_info
+           FROM ingest.feature_type c
+           WHERE c.geomtype='class' AND c.ftid = 10*round(f.ftid/10)
+         ) t2
+       ) AS info
+  FROM ingest.feature_type f
+  WHERE f.geomtype!='class'
+;
+-------
+
 -- DROP TABLE ingest.layer_file;
 CREATE TABLE ingest.layer_file (
   pck_id float4 NOT NULL CHECK( digpreserv_packid_isvalid(pck_id) ), -- package file ID, not controled here. Talvez seja packVers (package and version) ou pck_id com float
@@ -220,12 +236,73 @@ CREATE TABLE ingest.feature_asis (
   geom geometry,
   UNIQUE(file_id,feature_id)
 );
-
-
+CREATE TABLE ingest.feature_asis_summary (
+  file_id int NOT NULL PRIMARY KEY REFERENCES ingest.layer_file(file_id),
+  summary jsonb
+);
 
 ----------------
 ----------------
 -- Ingest AS-IS
+
+
+CREATE or replace FUNCTION ingest.feature_asis_geohashes(
+    p_file_id integer,  -- ID at ingest.layer_file
+    ghs_size integer DEFAULT 5
+) RETURNS jsonb AS $f$
+  WITH scan AS (
+   SELECT  ghs, COUNT(*) n
+   FROM (
+  	SELECT
+  	  ST_Geohash(
+  	    CASE WHEN t1a.gtype='point' THEN geom ELSE ST_PointOnSurface(geom) END
+  	    ,ghs_size
+  	  ) as ghs
+  	FROM ingest.feature_asis,
+  	 (SELECT ingest.layer_file_geomtype(p_file_id) AS gtype) t1a
+  	WHERE file_id=p_file_id
+   ) t2
+   GROUP BY 1
+   ORDER BY 1
+  )
+   SELECT jsonb_object_agg( ghs,n )
+   FROM scan
+$f$ LANGUAGE SQL;
+
+CREATE or replace FUNCTION ingest.feature_asis_assign_volume(
+    p_file_id integer  -- ID at ingest.layer_file
+) RETURNS jsonb AS $f$
+  SELECT to_jsonb(t3)
+  FROM (
+      SELECT n, CASE gtype
+          WHEN 'poly'  THEN 'polygons'
+          WHEN 'line'  THEN 'segments'
+          WHEN 'point'  THEN 'points'
+        END n_unit,
+      size, CASE gtype
+          WHEN 'poly'  THEN 'km2'
+          WHEN 'line'  THEN 'km'
+          ELSE  ''
+        END size_unit,
+        bbox_km2
+      FROM (
+        SELECT gtype, n, CASE gtype
+            WHEN 'poly'  THEN round( ST_Area(geom,true)/1000000, 1)::int
+            WHEN 'line'  THEN round( ST_Length(geom,true)/1000, 1)::int
+            ELSE  null::int
+          END size,
+          round( ST_Area(ST_OrientedEnvelope(geom),true)/1000000, 1)::int AS bbox_km2
+        FROM (
+            SELECT count(*) n, st_collect(geom) as geom
+            FROM ingest.feature_asis WHERE file_id=p_file_id
+        ) t1a, (
+          SELECT ingest.layer_file_geomtype(p_file_id) AS gtype
+        ) t1b
+      ) t2
+  ) t3
+$f$ LANGUAGE SQL;
+
+-----
 
 CREATE or replace FUNCTION ingest.geojson_load(
     p_file text, -- absolute path and filename, test with '/tmp/pg_io/EXEMPLO3.geojson'
@@ -281,20 +358,40 @@ CREATE or replace FUNCTION ingest.getmeta_to_file(
   p_ftid int,
   p_pck_id float,
   p_ftype text DEFAULT NULL
+  -- proc_step = 1
   -- ,p_size_min int DEFAULT 5
 ) RETURNS int AS $f$
- INSERT INTO ingest.layer_file(pck_id,ftid,file_type,hash_md5,file_meta)
+-- with ... check
+ WITH filedata AS (
    SELECT p_pck_id, p_ftid, ftype,
-          CASE WHEN (fmeta->'size')::int<5 OR (fmeta->>'hash_md5')='' THEN NULL ELSE fmeta->>'hash_md5' END, --guard
-          (fmeta - 'hash_md5')
+          CASE
+            WHEN (fmeta->'size')::int<5 OR (fmeta->>'hash_md5')='' THEN NULL --guard
+            ELSE fmeta->>'hash_md5'
+          END AS hash_md5,
+          (fmeta - 'hash_md5') AS fmeta
    FROM (
        SELECT COALESCE( p_ftype, substring(p_file from '[^\.]+$') ) as ftype,
           jsonb_pg_stat_file(p_file,true) as fmeta
-  ) t
- RETURNING file_id;
+   ) t
+ ),
+  file_exists AS (
+    SELECT file_id,proc_step
+    FROM ingest.layer_file
+    WHERE pck_id=p_pck_id AND hash_md5=(SELECT hash_md5 FROM filedata)
+  ), ins AS (
+   INSERT INTO ingest.layer_file(pck_id,ftid,file_type,hash_md5,file_meta)
+      SELECT * FROM filedata
+   ON CONFLICT DO NOTHING
+   RETURNING file_id
+  )
+  SELECT file_id FROM (
+      SELECT file_id, 1 as proc_step FROM ins
+      UNION ALL
+      SELECT file_id, proc_step      FROM file_exists
+  ) t WHERE proc_step=1
 $f$ LANGUAGE SQL;
 COMMENT ON FUNCTION ingest.getmeta_to_file(text,int,float,text)
-  IS 'Reads file metadata and inserts it into ingest.layer_file.'
+  IS 'Reads file metadata and inserts it into ingest.layer_file. If proc_step=1 returns valid ID else NULL.'
 ;
 CREATE or replace FUNCTION ingest.getmeta_to_file(
   p_file text,
@@ -315,8 +412,43 @@ COMMENT ON FUNCTION ingest.getmeta_to_file(text,text,float,text)
 -- ex. select ingest.getmeta_to_file('/tmp/a.csv',3,555);
 -- ex. select ingest.getmeta_to_file('/tmp/b.shp','geoaddress_full',555);
 
+/* ver VIEW
+CREATE or replace FUNCTION ingest.feature_type_refclass_tab(
+  p_ftid integer
+) RETURNS TABLE (like ingest.feature_type) AS $f$
+  SELECT *
+  FROM ingest.feature_type
+  WHERE ftid = 10*round(p_ftid/10)
+$f$ LANGUAGE SQL;
+COMMENT ON FUNCTION ingest.feature_type_refclass_tab(integer)
+  IS 'Feature class of a feature_type, returing it as table.'
+;
+CREATE or replace FUNCTION ingest.feature_type_refclass_jsonb(
+  p_ftid integer
+) RETURNS JSONB AS $wrap$
+  SELECT to_jsonb(t)
+  FROM ingest.feature_type_refclass_tab($1) t
+$wrap$ LANGUAGE SQL;
+COMMENT ON FUNCTION ingest.feature_type_refclass_jsonb(integer)
+  IS 'Feature class of a feature_type, returing it as JSONb.'
+;
+*/
 
---- depois de realizada externamente e carga do shapfile ... ou usando
+CREATE or replace FUNCTION ingest.layer_file_geomtype(
+  p_file_id integer
+) RETURNS text AS $f$
+  SELECT geomtype
+  FROM ingest.feature_type
+  WHERE ftid = (
+    SELECT ftid
+    FROM ingest.layer_file
+    WHERE file_id = p_file_id
+  )
+$f$ LANGUAGE SQL;
+COMMENT ON FUNCTION ingest.layer_file_geomtype(integer)
+  IS 'Geomtype of a layer_file.'
+;
+
 CREATE or replace FUNCTION ingest.any_load(
     p_fileref text,  -- apenas referencia para ingest.layer_file
     p_ftname text,   -- featureType of layer... um file pode ter mais de um layer??
@@ -329,11 +461,15 @@ CREATE or replace FUNCTION ingest.any_load(
   DECLARE
     q_file_id integer;
     q_query text;
-    q_ret text;
+     bigint;
     feature_id_col text;
     use_tabcols boolean;
+    msg_ret text;
   BEGIN
-  q_file_id := ingest.getmeta_to_file(p_fileref,p_ftname,p_pck_id);
+  q_file_id := ingest.getmeta_to_file(p_fileref,p_ftname,p_pck_id); -- not null when proc_step=1. Ideal retornar array.
+  IF q_file_id IS NULL THEN
+    RETURN format('ERROR: file-read problem or data ingested before, see %s.',p_fileref);
+  END IF;
   IF p_tabcols=array[]::text[] THEN  -- condição para solicitar todas as colunas
     p_tabcols = rel_columns(p_tabname);
   END IF;
@@ -354,35 +490,56 @@ CREATE or replace FUNCTION ingest.any_load(
   END IF;
   q_query := format(
       $$
-      WITH ins2 AS (
+      WITH
+      scan AS (
+        SELECT %s, gid, properties,
+               CASE
+                 WHEN ST_SRID(geom)=0 THEN ST_SetSRID(geom,4326)
+                 WHEN %s AND ST_SRID(geom)!=4326 THEN ST_Transform(geom,4326)
+                 ELSE geom
+               END AS geom
+        FROM (
+            SELECT %s,  -- feature_id_col
+                 %s as properties,
+                 %s -- geom
+            FROM %s %s
+          ) t
+      ),
+      ins AS (
         INSERT INTO ingest.feature_asis
-         SELECT %s, gid, properties,
-                CASE
-                  WHEN ST_SRID(geom)=0 THEN ST_SetSRID(geom,4326)
-                  WHEN %s AND ST_SRID(geom)!=4326 THEN ST_Transform(geom,4326)
-                  ELSE geom
-                END
-         FROM (
-           SELECT %s, %s as properties,
-                  %s -- geom
-           FROM %s %s
-         ) t1
+           SELECT *
+           FROM scan WHERE geom IS NOT NULL AND ST_IsValid(geom)
         RETURNING 1
-       )
-       SELECT E'From file_id=%s inserted type=%s\nin feature_asis '
-              || (SELECT COUNT(*) FROM ins2) ||' items.'
+      )
+      SELECT COUNT(*) FROM ins
     $$,
-    q_file_id, iif(p_to4326,'true'::text,'false'),
+    q_file_id,
+    iif(p_to4326,'true'::text,'false'),  -- decide ST_Transform
     feature_id_col,
-    iIF( use_tabcols, 'to_jsonb(subq)'::text, E'\'{}\'::jsonb' ),
+    iIF( use_tabcols, 'to_jsonb(subq)'::text, E'\'{}\'::jsonb' ), -- properties
     CASE WHEN lower(p_geom_name)='geom' THEN 'geom' ELSE p_geom_name||' AS geom' END,
     p_tabname,
-    iIF( use_tabcols, ', LATERAL (SELECT '|| array_to_string(p_tabcols,',') ||') subq',  ''::text ),
-    q_file_id,
-    p_ftname
+    iIF( use_tabcols, ', LATERAL (SELECT '|| array_to_string(p_tabcols,',') ||') subq',  ''::text )
   );
-  EXECUTE q_query INTO q_ret;
-  RETURN q_ret;
+  EXECUTE q_query INTO num_items;
+  msg_ret := format( E'From file_id=%s inserted type=%s\nin feature_asis %s items.',
+    q_file_id,
+    p_ftname, num_items
+  );
+  IF num_items>0 THEN
+    UPDATE ingest.layer_file SET proc_step=2   -- if insert process occurs after q_query.
+    WHERE file_id=q_file_id
+    ;
+    INSERT INTO ingest.feature_asis_summary (file_id,summary) VALUES (
+      q_file_id,
+      feature_asis_assign_volume(q_file_id)
+      || jsonb_build_object(
+          'distribution',
+          geohash_distribution_summary( ingest.feature_asis_geohashes(q_file_id,5), 5, 10, 0.7)
+        ) -- 6 para lines e pontos e 5 para areas
+      );
+  END IF;
+  RETURN msg_ret;
   END;
 $f$ LANGUAGE PLpgSQL;
 COMMENT ON FUNCTION ingest.any_load(text,text,text,float,text[],text,boolean)
@@ -390,11 +547,6 @@ COMMENT ON FUNCTION ingest.any_load(text,text,text,float,text[],text,boolean)
 ;
 -- ex. SELECT ingest.any_load('/tmp/pg_io/NRO_IMOVEL.shp','geoaddress_none','pk027_geoaddress1',27,array['gid','textstring']);
 
-/*
-# falta o assert das assinaturas, na preservação digital precisaria ser baseado em diff.
-# as assinaturas dependem do tipo de geometria (ponto, linha ou rea), requerem função especializada (comprovando reprodutibilidade).
-# função ingest.any_load deveria converter lista de cols conforme padrões geoaddress_none
-*/
 
 CREATE or replace FUNCTION ingest.any_load(
     p_fileref text,  -- 1. apenas referencia para ingest.layer_file
@@ -411,6 +563,10 @@ COMMENT ON FUNCTION ingest.any_load(text,text,text,text,text[],text,boolean)
   IS 'Wrap to ingest.any_load(1,2,3,4=float).'
 ;
 
+/*
+# falta
+# função ingest.any_load deveria converter lista de cols conforme padrões geoaddress_none
+*/
 
 
 -- INSERT GEOMETRIA QQ com referencia a arquivo e layer

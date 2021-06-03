@@ -9,27 +9,28 @@ CREATE extension IF NOT EXISTS postgis;
 -------------------------------
 -- system Digital Preservation
 
-CREATE or replace FUNCTION digpreserv_packid_to_float(pkid int, version int) RETURNS float4 AS $f$
-  SELECT pkid::float4 + (CASE WHEN version IS NULL or version<=0 THEN 1 ELSE version END)::float4/10000.0
-  -- alternativa seria base 8 com os dígitos +1, ou seja, 1 a 9, de modo que a fração teria leitura de inteiro.
-  -- mas perderia a ordenação em float, ou seja, precisamos de max(pck_id).
+CREATE or replace FUNCTION digpreserv_packid_to_float(pkid int, version int) RETURNS real AS $f$
+  SELECT pkid::real + (CASE WHEN version IS NULL or version<=0 THEN 1 ELSE version END)::real/1000.0::real
+  -- Estimativa de versões: 1 por semana ao longo de 15 anos. 15*12*4.3=780. Ainda sobram 320 por segurança.
 $f$ language SQL IMMUTABLE;
 COMMENT ON FUNCTION digpreserv_packid_to_float(int,int)
- IS 'Encodes integer pkid and version into float pck_id, convention of the 20 years with 40 versions/year.'
+ IS 'Encodes integer pkid and version into float pck_id, convention of the one new version a week for 15 years.'
 ;
-CREATE or replace FUNCTION digpreserv_packid_to_float(pck_id int[]) RETURNS float4 AS $wrap$
+CREATE or replace FUNCTION digpreserv_packid_to_float(pck_id int[]) RETURNS real AS $wrap$
   SELECT digpreserv_packid_to_float(pck_id[1],pck_id[2])
 $wrap$ language SQL IMMUTABLE;
 COMMENT ON FUNCTION digpreserv_packid_to_float(int[])
  IS 'Encodes integer array[pkid,version] into float pck_id, convention of the 20 years with 40 versions/year.'
 ;
-
-CREATE or replace FUNCTION digpreserv_packid_to_float(str_pkid text) RETURNS float4 AS $f$
-  SELECT replace(str_pkid,'_','.')::float4
+CREATE or replace FUNCTION digpreserv_packid_to_float(str_pkid text) RETURNS real AS $f$
+  SELECT replace(str_pkid,'_','.')::real
 $f$ language SQL IMMUTABLE;
+COMMENT ON FUNCTION digpreserv_packid_to_float(text)
+ IS 'Converts pck_id format, text into float.'
+;
 
 CREATE or replace FUNCTION digpreserv_packid_to_ints(pck_id float) RETURNS int[] AS $f$
-  SELECT array[k::int,round((pck_id-k)*10000)::int]
+  SELECT array[k::int,round((pck_id-k)*1000)::int]
   FROM ( SELECT trunc(pck_id) k) t
 $f$ language SQL IMMUTABLE;
 COMMENT ON FUNCTION digpreserv_packid_to_ints(float)
@@ -37,7 +38,7 @@ COMMENT ON FUNCTION digpreserv_packid_to_ints(float)
 ;
 CREATE or replace FUNCTION digpreserv_packid_to_str(pck_id float, sep boolean default false) RETURNS text AS $f$
   SELECT CASE WHEN sep THEN replace(s,'.','_') ELSE s END
-  FROM ( SELECT to_char($1,'FM999999999.0000') s ) t
+  FROM ( SELECT to_char($1,'FM999999999.000') s ) t
 $f$ language SQL IMMUTABLE;
 CREATE or replace FUNCTION digpreserv_packid_to_str(pck_id int[], sep boolean default false) RETURNS text AS $wrap$
   select  digpreserv_packid_to_str( digpreserv_packid_to_float($1), $2 )
@@ -46,7 +47,7 @@ CREATE or replace FUNCTION digpreserv_packid_to_str(pkid int, version int, sep b
  select  digpreserv_packid_to_str( digpreserv_packid_to_float($1,$2), $3 )
 $wrap$ language SQL IMMUTABLE;
 
-CREATE or replace FUNCTION digpreserv_packid_plusone(pck_id float) RETURNS float4 AS $f$
+CREATE or replace FUNCTION digpreserv_packid_plusone(pck_id float) RETURNS real AS $f$
   SELECT digpreserv_packid_to_float(p[1],p[2]+1)
   FROM (SELECT digpreserv_packid_to_ints(pck_id) p) t
 $f$ language SQL IMMUTABLE;
@@ -54,7 +55,7 @@ $f$ language SQL IMMUTABLE;
 
 CREATE or replace FUNCTION digpreserv_packid_isvalid(pck_id float) RETURNS boolean AS $f$
   SELECT CASE
-    WHEN p IS NULL OR p[1] IS NULL OR p[1]=0 OR p[2]=0 OR digpreserv_packid_to_float(p)!=pck_id::float4 THEN false
+    WHEN p IS NULL OR p[1] IS NULL OR p[1]=0 OR p[2]=0 OR digpreserv_packid_to_float(p)!=pck_id::real THEN false
     ELSE true
     END
   FROM (SELECT digpreserv_packid_to_ints(pck_id) p) t
@@ -65,9 +66,9 @@ $f$ language SQL IMMUTABLE;
 CREATE or replace FUNCTION digpreserv_packid_getmax(
   p_tablename  text,
   p_plusone boolean DEFAULT false
-) RETURNS float4 AS $f$
+) RETURNS real AS $f$
 DECLARE
-  r float4;
+  r real;
 BEGIN
   EXECUTE format(
     CASE

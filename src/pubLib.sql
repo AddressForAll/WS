@@ -26,7 +26,6 @@ COMMENT ON FUNCTION array_length(anyarray)
   IS 'Wrap for array_length(A,1).'
 ;
 
-
 -- -- -- -- -- -- -- -- -- -- --
 -- Complementar CAST functions:
 
@@ -114,6 +113,16 @@ $f$ LANGUAGE SQL IMMUTABLE;  -- complement is f(key text[], j jsonb, rename text
 COMMENT ON FUNCTION jsonb_objslice(text,jsonb,text)
   IS 'Get the key as encapsulated object, with same or changing name.'
 ;
+
+CREATE or replace FUNCTION  jsonb_object_length(j jsonb) RETURNS int AS $f$
+  SELECT COUNT(*)::int FROM jsonb_object_keys(j);
+$f$ LANGUAGE SQL IMMUTABLE;
+
+CREATE or replace FUNCTION  jsonb_object_keys_maxlength(j jsonb) RETURNS int AS $f$
+  SELECT MAX(length(x))::int FROM jsonb_object_keys(j) t(x)
+$f$ LANGUAGE SQL IMMUTABLE;
+
+
 
 -- -- -- -- -- -- -- -- -- -- --
 -- Extends native functions:
@@ -322,7 +331,7 @@ CREATE or replace FUNCTION rel_columns(
  p_relname text, p_schemaname text DEFAULT NULL
 ) RETURNS text[] AS $f$
    SELECT --attrelid::regclass AS tbl,  atttypid::regtype  AS datatype
-        array_agg(attname ORDER  BY attnum)
+        array_agg(attname::text ORDER  BY attnum)
    FROM   pg_attribute
    WHERE  attrelid = (CASE
              WHEN strpos($1, '.')>0 THEN $1
@@ -332,3 +341,62 @@ CREATE or replace FUNCTION rel_columns(
    AND    attnum > 0
    AND    NOT attisdropped
 $f$ LANGUAGE SQL;
+
+------
+
+CREATE or replace FUNCTION geohash_distribution_tots(p_j jsonb) RETURNS jsonb AS $f$
+  SELECT jsonb_build_object(
+    'keys',  MAX( jsonb_object_length(p_j) ), --constant
+    'n_tot', SUM(n::int)::int,
+    'n_avg', ROUND(AVG(n::int))::int,
+    'n_dev', ROUND(STDDEV_POP(n::int))::int,
+    'n_median', percentile_disc(0.5) WITHIN GROUP (ORDER BY n::int),
+    'n_min', MIN(n::int),
+    'n_max', MAX(n::int)
+    )
+  FROM  jsonb_each(p_j) t(ghs,n)
+$f$ LANGUAGE SQL;
+
+
+CREATE or replace FUNCTION geohash_distribution_summary(
+  p_j jsonb,
+  p_ghs_size int DEFAULT 6, -- 5 para áreas
+  p_len_max int DEFAULT 10,
+  p_percentile real DEFAULT 0.75
+) RETURNS jsonb AS $f$
+  DECLARE
+    len int;
+    ghs_len int;
+    newdistrib jsonb;
+  BEGIN
+  ghs_len := jsonb_object_keys_maxlength(p_j);
+  IF p_ghs_size >= ghs_len THEN
+    p_ghs_size := p_ghs_size-1;
+  END IF;
+  len := jsonb_object_length(p_j);
+  IF p_ghs_size<1 OR p_len_max<2 OR len<=p_len_max THEN
+    RETURN p_j;
+  END IF;
+  WITH
+   j_each AS (
+     SELECT ghs, n::int n
+     FROM  jsonb_each(p_j) t(ghs,n) ORDER BY n
+   ),
+   perc AS (
+    SELECT percentile_disc(p_percentile) WITHIN GROUP (ORDER BY n) as pct
+    FROM j_each
+   )
+   SELECT  jsonb_object_agg( ghs,n ) INTO newdistrib
+   FROM (
+      SELECT ghs, n
+      FROM j_each, perc
+      WHERE n>=pct
+      UNION
+      SELECT substr(ghs,1,p_ghs_size), SUM(n) as n
+      FROM j_each, perc
+      WHERE n<pct
+      GROUP BY 1
+   ) t;
+  RETURN geohash_distribution_summary(newdistrib, p_ghs_size-1, p_len_max, p_percentile);
+  END;
+$f$ LANGUAGE PLpgSQL;
