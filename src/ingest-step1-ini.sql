@@ -177,7 +177,12 @@ INSERT INTO ingest.feature_type VALUES
 
   (70,'nsvia',        'class', null, 'Namespace of vias, a name delimited by a polygon.', '{"description_pt":"Espaço-de-nomes para vias, um nome delimitado por polígono. Tipicamente nome de bairro ou de loteamento. Complementa o nome de via em nomes duplicados (repetidos dentro do mesmo município mas não dentro do mesmo nsvia).","synonymous_pt":["bairro","loteamento"]}'::jsonb),
   (71,'nsvia_full',   'poly', false, 'Namespace of vias polygon with name and optional metadata', NULL),
-  (72,'nsvia_ext',    'poly', true,  'Namespace of vias polygon with external metadata', NULL)
+  (72,'nsvia_ext',    'poly', true,  'Namespace of vias polygon with external metadata', NULL),
+
+  (80,'block',        'class', null, 'Urban block and similar structures, delimited by a polygon.', '{"description_pt":"Quadras ou divisões poligonais similares.","synonymous_pt":["quadra"]}'::jsonb),
+  (81,'block_full',   'poly', false, 'Urban block with IDs and all other jurisdiction needs', NULL),
+  (82,'block_none',   'poly', false,  'Urban block with no ID', NULL)
+
 ;
 -- Para a iconografia do site:
 -- SELECT f.ftname as "feature type", t.geomtype as "geometry type", f.description from ingest.feature_type f inner JOIN (select  substring(ftname from '^[^_]+') as ftgroup, geomtype  from ingest.feature_type where geomtype!='class' group by 1,2) t ON t.ftgroup=f.ftname ;--where t.geomtype='class';
