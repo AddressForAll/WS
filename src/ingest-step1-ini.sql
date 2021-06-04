@@ -11,7 +11,7 @@ CREATE SERVER    IF NOT EXISTS files FOREIGN DATA WRAPPER file_fdw;
 CREATE schema    IF NOT EXISTS ingest;
 CREATE schema    IF NOT EXISTS tmp_orig;
 
--- float is float4=real: review definitions? real  is indexable, use it at tables.
+-- real is float4=real: review definitions? real  is indexable, use it at tables.
 
 -- -- --
 -- SQL and bash generators (optim-ingest submodule)
@@ -118,7 +118,7 @@ COMMENT ON TABLE ingest.addr_point
 ;
 */
 CREATE TABLE ingest.via_line(
-  pck_id float NOT NULL, -- REFERENCES optim.donatedPack(pck_id),
+  pck_id real NOT NULL, -- REFERENCES optim.donatedPack(pck_id),
   vianame text,
   is_informal boolean default false, -- non-official name (loteametos com ruas ainda sem nome)
   geom geometry,
@@ -203,22 +203,26 @@ CREATE VIEW ingest.vw01info_feature_type AS
 
 -- DROP TABLE ingest.layer_file;
 CREATE TABLE ingest.layer_file (
-  pck_id float4 NOT NULL CHECK( digpreserv_packid_isvalid(pck_id) ), -- package file ID, not controled here. Talvez seja packVers (package and version) ou pck_id com float
   file_id serial NOT NULL PRIMARY KEY,
+  pck_id float4 NOT NULL CHECK( digpreserv_packid_isvalid(pck_id) ), -- package file ID, not controled here. Talvez seja packVers (package and version) ou pck_id com real
+  pck_fileref_sha256 text NOT NULL CHECK( pck_fileref_sha256 ~ '^[0-9a-f]{64,64}\.[a-z0-9]+$' ),
   ftid smallint NOT NULL REFERENCES ingest.feature_type(ftid),
   file_type text,  -- csv, geojson, shapefile, etc.
   proc_step int DEFAULT 1,  -- current status of the "processing steps", 1=started, 2=loaded, ...=finished
   hash_md5 text NOT NULL, -- or "size-md5" as really unique string
   file_meta jsonb,
+  feature_asis_summary jsonb,
   UNIQUE(hash_md5) -- or size-MD5 or (ftid,hash_md5)?  não faz sentido usar duas vezes se existe _full.
 );
 
+/* LIXO
 CREATE TABLE ingest.feature_asis_report (
   file_id int NOT NULL REFERENCES ingest.layer_file(file_id),
   feature_id int NOT NULL,
   info jsonb,
   UNIQUE(file_id,feature_id)
 );
+*/
 
 CREATE TABLE ingest.tmp_geojson_feature (
   file_id int NOT NULL REFERENCES ingest.layer_file(file_id),
@@ -236,15 +240,27 @@ CREATE TABLE ingest.feature_asis (
   geom geometry,
   UNIQUE(file_id,feature_id)
 );
-CREATE TABLE ingest.feature_asis_summary (
-  file_id int NOT NULL PRIMARY KEY REFERENCES ingest.layer_file(file_id),
-  summary jsonb
-);
+
 
 ----------------
 ----------------
 -- Ingest AS-IS
 
+
+CREATE or replace FUNCTION ingest.layer_file_geomtype(
+  p_file_id integer
+) RETURNS text[] AS $f$
+  SELECT array[geomtype,ftname]
+  FROM ingest.feature_type
+  WHERE ftid = (
+    SELECT ftid
+    FROM ingest.layer_file
+    WHERE file_id = p_file_id
+  )
+$f$ LANGUAGE SQL;
+COMMENT ON FUNCTION ingest.layer_file_geomtype(integer)
+  IS 'Geomtype and ftname of a layer_file.'
+;
 
 CREATE or replace FUNCTION ingest.feature_asis_geohashes(
     p_file_id integer,  -- ID at ingest.layer_file
@@ -259,7 +275,7 @@ CREATE or replace FUNCTION ingest.feature_asis_geohashes(
   	    ,ghs_size
   	  ) as ghs
   	FROM ingest.feature_asis,
-  	 (SELECT ingest.layer_file_geomtype(p_file_id) AS gtype) t1a
+  	 (SELECT (ingest.layer_file_geomtype(p_file_id))[1] AS gtype) t1a
   	WHERE file_id=p_file_id
    ) t2
    GROUP BY 1
@@ -296,19 +312,34 @@ CREATE or replace FUNCTION ingest.feature_asis_assign_volume(
             SELECT count(*) n, st_collect(geom) as geom
             FROM ingest.feature_asis WHERE file_id=p_file_id
         ) t1a, (
-          SELECT ingest.layer_file_geomtype(p_file_id) AS gtype
+          SELECT (ingest.layer_file_geomtype(p_file_id))[1] AS gtype
         ) t1b
       ) t2
   ) t3
 $f$ LANGUAGE SQL;
 
+CREATE or replace FUNCTION ingest.feature_asis_assign(
+    p_file_id integer  -- ID at ingest.layer_file
+) RETURNS jsonb AS $f$
+  SELECT ingest.feature_asis_assign_volume(p_file_id)
+    || jsonb_build_object(
+        'distribution',
+        geohash_distribution_summary( ingest.feature_asis_geohashes(p_file_id,ghs_size), ghs_size, 10, 0.7)
+    )
+  FROM (
+    SELECT CASE WHEN (ingest.layer_file_geomtype(p_file_id))[1]='poly' THEN 5 ELSE 6 END AS ghs_size
+  ) t
+$f$ LANGUAGE SQL;
+
 -----
 
 CREATE or replace FUNCTION ingest.geojson_load(
-    p_file text, -- absolute path and filename, test with '/tmp/pg_io/EXEMPLO3.geojson'
-    p_ftid int,  -- REFERENCES ingest.feature_type(ftid)
-    p_ftype text DEFAULT NULL,
-    p_to4326 boolean DEFAULT true
+  p_file text, -- absolute path and filename, test with '/tmp/pg_io/EXEMPLO3.geojson'
+  p_ftid int,  -- REFERENCES ingest.feature_type(ftid)
+  p_pck_id real,
+  p_pck_fileref_sha256 text,
+  p_ftype text DEFAULT NULL,
+  p_to4326 boolean DEFAULT true
 ) RETURNS text AS $f$
 
   DECLARE
@@ -317,10 +348,11 @@ CREATE or replace FUNCTION ingest.geojson_load(
     q_ret text;
   BEGIN
 
-  INSERT INTO ingest.layer_file(ftid,file_type,file_meta)
-     SELECT p_ftid::smallint,
+  INSERT INTO ingest.layer_file(p_pck_id,ftid,file_type,file_meta,pck_fileref_sha256)
+     SELECT p_pck_id, p_ftid::smallint,
             COALESCE( p_ftype, substring(p_file from '[^\.]+$') ),
-            geojson_readfile_headers(p_file)
+            geojson_readfile_headers(p_file),
+            p_pck_fileref_sha256
      RETURNING file_id INTO q_file_id;
 
   WITH jins AS (
@@ -356,7 +388,8 @@ $f$ LANGUAGE PLpgSQL;
 CREATE or replace FUNCTION ingest.getmeta_to_file(
   p_file text,
   p_ftid int,
-  p_pck_id float,
+  p_pck_id real,
+  p_pck_fileref_sha256 text,
   p_ftype text DEFAULT NULL
   -- proc_step = 1
   -- ,p_size_min int DEFAULT 5
@@ -370,7 +403,7 @@ CREATE or replace FUNCTION ingest.getmeta_to_file(
           END AS hash_md5,
           (fmeta - 'hash_md5') AS fmeta
    FROM (
-       SELECT COALESCE( p_ftype, substring(p_file from '[^\.]+$') ) as ftype,
+       SELECT COALESCE( p_ftype, lower(substring(p_file from '[^\.]+$')) ) as ftype,
           jsonb_pg_stat_file(p_file,true) as fmeta
    ) t
  ),
@@ -379,8 +412,8 @@ CREATE or replace FUNCTION ingest.getmeta_to_file(
     FROM ingest.layer_file
     WHERE pck_id=p_pck_id AND hash_md5=(SELECT hash_md5 FROM filedata)
   ), ins AS (
-   INSERT INTO ingest.layer_file(pck_id,ftid,file_type,hash_md5,file_meta)
-      SELECT * FROM filedata
+   INSERT INTO ingest.layer_file(pck_id,ftid,file_type,hash_md5,file_meta,pck_fileref_sha256)
+      SELECT *, p_pck_fileref_sha256 FROM filedata
    ON CONFLICT DO NOTHING
    RETURNING file_id
   )
@@ -390,23 +423,23 @@ CREATE or replace FUNCTION ingest.getmeta_to_file(
       SELECT file_id, proc_step      FROM file_exists
   ) t WHERE proc_step=1
 $f$ LANGUAGE SQL;
-COMMENT ON FUNCTION ingest.getmeta_to_file(text,int,float,text)
+COMMENT ON FUNCTION ingest.getmeta_to_file(text,int,real,text,text)
   IS 'Reads file metadata and inserts it into ingest.layer_file. If proc_step=1 returns valid ID else NULL.'
 ;
 CREATE or replace FUNCTION ingest.getmeta_to_file(
-  p_file text,
-  p_ftname text, -- define o layer... um file pode ter mais de um layer??
-  p_pck_id float,
-  p_ftype text DEFAULT NULL
+  p_file text,   -- 1.
+  p_ftname text, -- 2. define o layer... um file pode ter mais de um layer??
+  p_pck_id real,
+  p_pck_fileref_sha256 text,
+  p_ftype text DEFAULT NULL -- 5
 ) RETURNS int AS $wrap$
     SELECT ingest.getmeta_to_file(
       $1,
       (SELECT ftid::int FROM ingest.feature_type WHERE ftname=lower($2)),
-      $3,
-      $4
+      $3, $4, $5
     );
 $wrap$ LANGUAGE SQL;
-COMMENT ON FUNCTION ingest.getmeta_to_file(text,text,float,text)
+COMMENT ON FUNCTION ingest.getmeta_to_file(text,text,real,text,text)
   IS 'Wrap para ingest.getmeta_to_file() usando ftName ao invés de ftID.'
 ;
 -- ex. select ingest.getmeta_to_file('/tmp/a.csv',3,555);
@@ -434,26 +467,12 @@ COMMENT ON FUNCTION ingest.feature_type_refclass_jsonb(integer)
 ;
 */
 
-CREATE or replace FUNCTION ingest.layer_file_geomtype(
-  p_file_id integer
-) RETURNS text AS $f$
-  SELECT geomtype
-  FROM ingest.feature_type
-  WHERE ftid = (
-    SELECT ftid
-    FROM ingest.layer_file
-    WHERE file_id = p_file_id
-  )
-$f$ LANGUAGE SQL;
-COMMENT ON FUNCTION ingest.layer_file_geomtype(integer)
-  IS 'Geomtype of a layer_file.'
-;
-
 CREATE or replace FUNCTION ingest.any_load(
     p_fileref text,  -- apenas referencia para ingest.layer_file
     p_ftname text,   -- featureType of layer... um file pode ter mais de um layer??
     p_tabname text,  -- tabela temporária de ingestáo
-    p_pck_id float,   -- id do package da Preservação.
+    p_pck_id real,   -- id do package da Preservação.
+    p_pck_fileref_sha256 text,
     p_tabcols text[] DEFAULT NULL, -- array[]=tudo, senão lista de atributos de p_tabname, ou só geometria
     p_geom_name text DEFAULT 'geom',
     p_to4326 boolean DEFAULT true -- on true converts SRID to 4326 .
@@ -461,12 +480,12 @@ CREATE or replace FUNCTION ingest.any_load(
   DECLARE
     q_file_id integer;
     q_query text;
-     bigint;
     feature_id_col text;
     use_tabcols boolean;
     msg_ret text;
+    num_items bigint;
   BEGIN
-  q_file_id := ingest.getmeta_to_file(p_fileref,p_ftname,p_pck_id); -- not null when proc_step=1. Ideal retornar array.
+  q_file_id := ingest.getmeta_to_file(p_fileref,p_ftname,p_pck_id,p_pck_fileref_sha256); -- not null when proc_step=1. Ideal retornar array.
   IF q_file_id IS NULL THEN
     RETURN format('ERROR: file-read problem or data ingested before, see %s.',p_fileref);
   END IF;
@@ -522,29 +541,25 @@ CREATE or replace FUNCTION ingest.any_load(
     iIF( use_tabcols, ', LATERAL (SELECT '|| array_to_string(p_tabcols,',') ||') subq',  ''::text )
   );
   EXECUTE q_query INTO num_items;
-  msg_ret := format( E'From file_id=%s inserted type=%s\nin feature_asis %s items.',
-    q_file_id,
-    p_ftname, num_items
+  msg_ret := format(
+    E'From file_id=%s inserted type=%s\nin feature_asis %s items.',
+    q_file_id, p_ftname, num_items
   );
   IF num_items>0 THEN
-    UPDATE ingest.layer_file SET proc_step=2   -- if insert process occurs after q_query.
-    WHERE file_id=q_file_id
-    ;
-    INSERT INTO ingest.feature_asis_summary (file_id,summary) VALUES (
-      q_file_id,
-      feature_asis_assign_volume(q_file_id)
-      || jsonb_build_object(
-          'distribution',
-          geohash_distribution_summary( ingest.feature_asis_geohashes(q_file_id,5), 5, 10, 0.7)
-        ) -- 6 para lines e pontos e 5 para areas
-      );
+    UPDATE ingest.layer_file
+    SET proc_step=2,   -- if insert process occurs after q_query.
+        feature_asis_summary= ingest.feature_asis_assign(q_file_id)
+    WHERE file_id=q_file_id;
   END IF;
   RETURN msg_ret;
   END;
 $f$ LANGUAGE PLpgSQL;
-COMMENT ON FUNCTION ingest.any_load(text,text,text,float,text[],text,boolean)
+COMMENT ON FUNCTION ingest.any_load(text,text,text,real,text,text[],text,boolean)
   IS 'Load (into ingest.feature_asis) shapefile or any other non-GeoJSON, of a separated table.'
 ;
+
+-- posto ipiranga logo abaixo..  sorvetorua.
+
 -- ex. SELECT ingest.any_load('/tmp/pg_io/NRO_IMOVEL.shp','geoaddress_none','pk027_geoaddress1',27,array['gid','textstring']);
 
 
@@ -553,14 +568,15 @@ CREATE or replace FUNCTION ingest.any_load(
     p_ftname text,   -- 2. featureType of layer... um file pode ter mais de um layer??
     p_tabname text,  -- 3. tabela temporária de ingestáo
     p_pck_id text,   -- 4. id do package da Preservação no formato "a.b".
-    p_tabcols text[] DEFAULT NULL,   -- 5. lista de atributos, ou só geometria
-    p_geom_name text DEFAULT 'geom', -- 6
-    p_to4326 boolean DEFAULT true    -- 7. on true converts SRID to 4326 .
+    p_pck_fileref_sha256 text,   -- 5
+    p_tabcols text[] DEFAULT NULL,   -- 6. lista de atributos, ou só geometria
+    p_geom_name text DEFAULT 'geom', -- 7
+    p_to4326 boolean DEFAULT true    -- 8. on true converts SRID to 4326 .
 ) RETURNS text AS $wrap$
-   SELECT ingest.any_load($1, $2, $3, digpreserv_packid_to_float($4), $5, $6, $7)
+   SELECT ingest.any_load($1, $2, $3, digpreserv_packid_to_float($4), $5, $6, $7, $8)
 $wrap$ LANGUAGE SQL;
-COMMENT ON FUNCTION ingest.any_load(text,text,text,text,text[],text,boolean)
-  IS 'Wrap to ingest.any_load(1,2,3,4=float).'
+COMMENT ON FUNCTION ingest.any_load(text,text,text,text,text,text[],text,boolean)
+  IS 'Wrap to ingest.any_load(1,2,3,4=real) using string format DD_DD.'
 ;
 
 /*
