@@ -26,6 +26,36 @@ CREATE or replace FUNCTION ingest.fdw_csv_paths(
   FROM COALESCE(p_path,'/tmp/pg_io') t(fpath)
 $f$ language SQL;
 
+
+CREATE or replace FUNCTION ingest.fdw_generate_direct_csv(
+  p_file text,  -- path+filename+ext
+  p_fdwname text, -- nome da tabela fwd
+  p_delimiter text DEFAULT ',',
+  p_addtxtype boolean DEFAULT true,
+  p_header boolean DEFAULT true
+) RETURNS text  AS $f$
+DECLARE
+ fpath text;
+ cols text[];
+ sepcols text;
+BEGIN
+ sepcols := iIF(p_addtxtype, '" text,"'::text, '","'::text);
+ cols := pg_csv_head(p_file, p_delimiter);
+ EXECUTE
+    format(
+      'DROP FOREIGN TABLE IF EXISTS %s; CREATE FOREIGN TABLE %s    (%s%s%s)',
+       p_fdwname, p_fdwname,   '"', array_to_string(cols,sepcols), iIF(p_addtxtype, '" text'::text, '"')
+     ) || format(
+       'SERVER files OPTIONS (filename %L, format %L, header %L, delimiter %L)',
+       p_file, 'csv', p_header::text, p_delimiter
+    );
+ RETURN p_fdwname;
+END;
+$f$ language PLpgSQL;
+COMMENT ON FUNCTION ingest.fdw_generate_direct_csv
+  IS 'Generates a FOREIGN TABLE for simples and direct CSV ingestion.'
+;
+
 CREATE or replace FUNCTION ingest.fdw_generate(
   p_name text,  -- table name and CSV input filename
   p_context text DEFAULT 'br',  -- or null
@@ -389,7 +419,6 @@ CREATE or replace FUNCTION ingest.geojson_load(
  END;
 $f$ LANGUAGE PLpgSQL;
 
-
 CREATE or replace FUNCTION ingest.getmeta_to_file(
   p_file text,
   p_ftid int,
@@ -472,7 +501,26 @@ COMMENT ON FUNCTION ingest.feature_type_refclass_jsonb(integer)
 ;
 */
 
+CREATE or replace FUNCTION ingest.any_load_debug(
+  p_method text,   -- 1.; shp/csv/etc.
+  p_fileref text,  -- apenas referencia para ingest.layer_file
+  p_ftname text,   -- featureType of layer... um file pode ter mais de um layer??
+  p_tabname text,  -- tabela temporária de ingestáo
+  p_pck_id text,   -- 5. id do package da Preservação.
+  p_pck_fileref_sha256 text,
+  p_tabcols text[] DEFAULT NULL, -- 7. array[]=tudo, senão lista de atributos de p_tabname, ou só geometria
+  p_geom_name text DEFAULT 'geom',
+  p_to4326 boolean DEFAULT true -- 9. on true converts SRID to 4326 .
+) RETURNS JSONb AS $f$
+  SELECT to_jsonb(t)
+  FROM ( SELECT $1 AS method, $2 AS fileref, $3 AS ftname, $4 AS tabname, $5 AS pck_id,
+                $6 pck_fileref_sha256, $7 tabcols, $8 geom_name, $9 to4326
+  ) t
+$f$ LANGUAGE SQL;
+
+
 CREATE or replace FUNCTION ingest.any_load(
+    p_method text,   -- shp/csv/etc.
     p_fileref text,  -- apenas referencia para ingest.layer_file
     p_ftname text,   -- featureType of layer... um file pode ter mais de um layer??
     p_tabname text,  -- tabela temporária de ingestáo
@@ -490,6 +538,12 @@ CREATE or replace FUNCTION ingest.any_load(
     msg_ret text;
     num_items bigint;
   BEGIN
+  IF p_method='csv2sql' THEN
+    p_fileref := p_fileref || '.csv';
+    -- other checks
+  ELSE
+    p_fileref := p_fileref || '.shp';
+  END IF;
   q_file_id := ingest.getmeta_to_file(p_fileref,p_ftname,p_pck_id,p_pck_fileref_sha256); -- not null when proc_step=1. Ideal retornar array.
   IF q_file_id IS NULL THEN
     RETURN format('ERROR: file-read problem or data ingested before, see %s.',p_fileref);
@@ -503,6 +557,7 @@ CREATE or replace FUNCTION ingest.any_load(
   ELSE
     feature_id_col := 'row_number() OVER () AS gid';
   END IF;
+  -- RAISE NOTICE E'\n===tabcols:\n %\n===END tabcols\n',  array_to_string(p_tabcols,',');
   IF p_tabcols is not NULL AND array_length(p_tabcols,1)>0 THEN
     p_tabcols   := sql_parse_selectcols(p_tabcols); -- clean p_tabcols
     use_tabcols := true;
@@ -559,28 +614,26 @@ CREATE or replace FUNCTION ingest.any_load(
   RETURN msg_ret;
   END;
 $f$ LANGUAGE PLpgSQL;
-COMMENT ON FUNCTION ingest.any_load(text,text,text,real,text,text[],text,boolean)
+COMMENT ON FUNCTION ingest.any_load(text,text,text,text,real,text,text[],text,boolean)
   IS 'Load (into ingest.feature_asis) shapefile or any other non-GeoJSON, of a separated table.'
 ;
-
 -- posto ipiranga logo abaixo..  sorvetorua.
-
 -- ex. SELECT ingest.any_load('/tmp/pg_io/NRO_IMOVEL.shp','geoaddress_none','pk027_geoaddress1',27,array['gid','textstring']);
 
-
 CREATE or replace FUNCTION ingest.any_load(
-    p_fileref text,  -- 1. apenas referencia para ingest.layer_file
-    p_ftname text,   -- 2. featureType of layer... um file pode ter mais de um layer??
-    p_tabname text,  -- 3. tabela temporária de ingestáo
-    p_pck_id text,   -- 4. id do package da Preservação no formato "a.b".
-    p_pck_fileref_sha256 text,   -- 5
-    p_tabcols text[] DEFAULT NULL,   -- 6. lista de atributos, ou só geometria
-    p_geom_name text DEFAULT 'geom', -- 7
-    p_to4326 boolean DEFAULT true    -- 8. on true converts SRID to 4326 .
+    p_method text,   -- 1.  shp/csv/etc.
+    p_fileref text,  -- 2. apenas referencia para ingest.layer_file
+    p_ftname text,   -- 3. featureType of layer... um file pode ter mais de um layer??
+    p_tabname text,  -- 4. tabela temporária de ingestáo
+    p_pck_id text,   -- 5. id do package da Preservação no formato "a.b".
+    p_pck_fileref_sha256 text,   -- 6
+    p_tabcols text[] DEFAULT NULL,   -- 7. lista de atributos, ou só geometria
+    p_geom_name text DEFAULT 'geom', -- 8
+    p_to4326 boolean DEFAULT true    -- 9. on true converts SRID to 4326 .
 ) RETURNS text AS $wrap$
-   SELECT ingest.any_load($1, $2, $3, digpreserv_packid_to_float($4), $5, $6, $7, $8)
+   SELECT ingest.any_load($1, $2, $3, $4, digpreserv_packid_to_float($5), $6, $7, $8, $9)
 $wrap$ LANGUAGE SQL;
-COMMENT ON FUNCTION ingest.any_load(text,text,text,text,text,text[],text,boolean)
+COMMENT ON FUNCTION ingest.any_load(text,text,text,text,text,text,text[],text,boolean)
   IS 'Wrap to ingest.any_load(1,2,3,4=real) using string format DD_DD.'
 ;
 
