@@ -9,6 +9,8 @@ CREATE extension IF NOT EXISTS postgis;
 -------------------------------
 -- system Digital Preservation
 
+-- rename *_to_float to *_to_real!
+
 CREATE or replace FUNCTION digpreserv_packid_to_float(pkid int, version int) RETURNS real AS $f$
   SELECT pkid::real + (CASE WHEN version IS NULL or version<=0 THEN 1 ELSE version END)::real/1000.0::real
   -- Estimativa de versões: 1 por semana ao longo de 15 anos. 15*12*4.3=780. Ainda sobram 320 por segurança.
@@ -38,8 +40,10 @@ COMMENT ON FUNCTION digpreserv_packid_to_ints(float)
 ;
 CREATE or replace FUNCTION digpreserv_packid_to_str(pck_id float, sep boolean default false) RETURNS text AS $f$
   SELECT CASE WHEN sep THEN replace(s,'.','_') ELSE s END
-  FROM ( SELECT to_char($1,'FM999999999.000') s ) t
+  FROM ( SELECT to_char($1,'FM999999000.000') s ) t
 $f$ language SQL IMMUTABLE;
+-- to_char(floor(pck_id+100000), 'fm999000')
+
 CREATE or replace FUNCTION digpreserv_packid_to_str(pck_id int[], sep boolean default false) RETURNS text AS $wrap$
   select  digpreserv_packid_to_str( digpreserv_packid_to_float($1), $2 )
 $wrap$ language SQL IMMUTABLE;
@@ -48,7 +52,7 @@ CREATE or replace FUNCTION digpreserv_packid_to_str(pkid int, version int, sep b
 $wrap$ language SQL IMMUTABLE;
 
 CREATE or replace FUNCTION digpreserv_packid_plusone(pck_id float) RETURNS real AS $f$
-  SELECT digpreserv_packid_to_float(p[1],p[2]+1)
+  SELECT digpreserv_packid_to_float(p[1],p[2]+1) -- +1?
   FROM (SELECT digpreserv_packid_to_ints(pck_id) p) t
 $f$ language SQL IMMUTABLE;
 
@@ -84,7 +88,7 @@ COMMENT ON FUNCTION digpreserv_packid_getmax
 ;
 
 -------------------------------
--- system geo-generic
+-- system -generic
 
 CREATE or replace FUNCTION geojson_readfile_headers(
     f text,   -- absolute path and filename
@@ -160,34 +164,9 @@ $f$ LANGUAGE SQL;
 
 -- SELECT sql_parse_selectcols(array['row_number() OVER () as gid','x','y as z']);
 
-/* LIXO, VERIFCAR SE PODE REMOVER DAQUI:
--- -- -- -- -- -- -- -- -- -- --
--- GeoJSON functions
+--CREATE or replace FUNCTION ST_cast_to_simple(p_geom geometry) RETURNS geometry AS $f$
+--$f$ LANGUAGE SQL;
 
-CREATE or replace FUNCTION ST_GeomFromGeoJSON_sanitized(
-  p_j  JSONb, p_srid int DEFAULT 4326
-) RETURNS geometry AS $f$
-  SELECT g FROM (
-   SELECT  ST_GeomFromGeoJSON(g::text)
-   FROM (
-   SELECT CASE
-    WHEN p_j IS NULL OR p_j='{}'::JSONb OR jsonb_typeof(p_j)!='object'
-        OR NOT(p_j?'type')
-        OR  (NOT(p_j?'crs') AND (p_srid<1 OR p_srid>998999) )
-        OR p_j->>'type' NOT IN ('Feature', 'FeatureCollection', 'Position', 'Point', 'MultiPoint',
-         'LineString', 'MultiLineString', 'Polygon', 'MultiPolygon', 'GeometryCollection')
-        THEN NULL
-    WHEN NOT(p_j?'crs')  OR 'EPSG0'=p_j->'crs'->'properties'->>'name'
-        THEN p_j || ('{"crs":{"type":"name","properties":{"name":"EPSG:'|| p_srid::text ||'"}}}')::jsonb
-    ELSE p_j
-    END
-   ) t2(g)
-   WHERE g IS NOT NULL
-  ) t(g)
-  WHERE ST_IsValid(g)
-$f$ LANGUAGE SQL IMMUTABLE;
-COMMENT ON FUNCTION file_get_contents
- IS $$ Do ST_GeomFromGeoJSON() with correct SRID. OLD geojson_sanitize(), as https://gis.stackexchange.com/a/60945/7505 $$;
 
 CREATE or replace FUNCTION ST_AsGeoJSONb( -- ST_AsGeoJSON_complete
   -- st_asgeojsonb(geometry, integer, integer, bigint, jsonb
@@ -218,6 +197,36 @@ COMMENT ON FUNCTION ST_AsGeoJSONb IS $$
   Enhances ST_AsGeoJSON() PostGIS function.
   Use ST_AsGeoJSONb( geom, 6, 1, osm_id::text, stable.element_properties(osm_id) - 'name:' ).
 $$;
+
+
+/* LIXO, VERIFCAR SE PODE REMOVER DAQUI:
+-- -- -- -- -- -- -- -- -- -- --
+-- GeoJSON functions
+
+CREATE or replace FUNCTION ST_GeomFromGeoJSON_sanitized(
+  p_j  JSONb, p_srid int DEFAULT 4326
+) RETURNS geometry AS $f$
+  SELECT g FROM (
+   SELECT  ST_GeomFromGeoJSON(g::text)
+   FROM (
+   SELECT CASE
+    WHEN p_j IS NULL OR p_j='{}'::JSONb OR jsonb_typeof(p_j)!='object'
+        OR NOT(p_j?'type')
+        OR  (NOT(p_j?'crs') AND (p_srid<1 OR p_srid>998999) )
+        OR p_j->>'type' NOT IN ('Feature', 'FeatureCollection', 'Position', 'Point', 'MultiPoint',
+         'LineString', 'MultiLineString', 'Polygon', 'MultiPolygon', 'GeometryCollection')
+        THEN NULL
+    WHEN NOT(p_j?'crs')  OR 'EPSG0'=p_j->'crs'->'properties'->>'name'
+        THEN p_j || ('{"crs":{"type":"name","properties":{"name":"EPSG:'|| p_srid::text ||'"}}}')::jsonb
+    ELSE p_j
+    END
+   ) t2(g)
+   WHERE g IS NOT NULL
+  ) t(g)
+  WHERE ST_IsValid(g)
+$f$ LANGUAGE SQL IMMUTABLE;
+COMMENT ON FUNCTION file_get_contents
+ IS $$ Do ST_GeomFromGeoJSON() with correct SRID. OLD geojson_sanitize(), as https://gis.stackexchange.com/a/60945/7505 $$;
 
 CREATE OR REPLACE FUNCTION st_read_geojson(
   p_path text,

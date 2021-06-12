@@ -11,8 +11,6 @@ CREATE SERVER    IF NOT EXISTS files FOREIGN DATA WRAPPER file_fdw;
 CREATE schema    IF NOT EXISTS ingest;
 CREATE schema    IF NOT EXISTS tmp_orig;
 
--- real is float4=real: review definitions? real  is indexable, use it at tables.
-
 -- -- --
 -- SQL and bash generators (optim-ingest submodule)
 
@@ -171,48 +169,47 @@ CREATE TABLE ingest.feature_type (  -- replacing old optim.origin_content_type
 );
 -- DELETE FROM ingest.feature_type;
 INSERT INTO ingest.feature_type VALUES
-  (0,'address',       'class', null,  'Cadastral address.','{"description_pt":"Endereço cadastral, representação por nome de via e numeração predial.","synonymous_pt":["endereço postal","endereço","planilha dos endereços","cadastro de endereços"]}'::jsonb),
+  (0,'address',       'class', null,  'Cadastral address.','{"shortname_pt":"endereço","description_pt":"Endereço cadastral, representação por nome de via e numeração predial.","synonymous_pt":["endereço postal","endereço","planilha dos endereços","cadastro de endereços"]}'::jsonb),
   (1,'address_full',  'none', true,   'Cadastral address (gid,via_id,via_name,number,postal_code,etc), joining with geoaddress_ext by a gid.', NULL),
   (2,'address_cmpl',  'none', true,   'Cadastral address, like address_full with only partial core metadata.', NULL),
   (3,'address_noid',  'none', false,  'Cadastral address with some basic metadata but no standard gid for join with geo).', NULL),
 
-  (10,'cadvia',           'class', null,  'Cadastral via (name of via).', '{"description_pt":"Via cadastral (nome de via), complemento da geográfica. Logradouro representado por dados cadastrais apenas.","synonymous_pt":["nomes de logradouro","nomes de rua"]}'::jsonb),
+  (10,'cadvia',           'class', null,  'Cadastral via (name of via).', '{"shortname_pt":"logradouro","description_pt":"Via cadastral (nome de via), complemento da geográfica. Logradouro representado por dados cadastrais apenas.","synonymous_pt":["nomes de logradouro","nomes de rua"]}'::jsonb),
   (11,'cadvia_cmpl',      'none', true,   'Cadastral via with metadata complementing via_ext (via_cod,via_name).', NULL),
   (12,'cadvia_noid',      'none', false,   'Via name (and optional metadata) with no ID for join with via_ext.', NULL),
 
-  (20,'geoaddress',         'class', null,  'Geo-address point.', '{"description_pt":"Geo-endereço. Representação geográfica do endereço, como ponto.","synonymous_pt":["geo-endereço","ponto de endereço","endereço georreferenciado","ponto de endereçamento postal"]}'::jsonb),
+  (20,'geoaddress',         'class', null,  'Geo-address point.', '{"shortname_pt":"endereço","description_pt":"Geo-endereço. Representação geográfica do endereço, como ponto.","synonymous_pt":["geo-endereço","ponto de endereço","endereço georreferenciado","ponto de endereçamento postal"]}'::jsonb),
   (21,'geoaddress_full',    'point', false, 'Geo-address point with all attributes, via_name and number.', NULL),
   (22,'geoaddress_ext',     'point', true,  'Geo-address point with no (or some) metadata, external metadata at address_cmpl or address_full.', NULL),
   (23,'geoaddress_none',    'point', false, 'Geo-address point-only, no metadata (or no core metadata).', NULL),
 
-  (30,'via',           'class', null,  'Via line.', '{"description_pt":"Eixo de via. Logradouro representado por linha central, com nome oficial e codlog opcional.","synonymous_pt":["eixo de logradouro","ruas"]}'::jsonb),
+  (30,'via',           'class', null,  'Via line.', '{"shortname_pt":"eixo de via","description_pt":"Eixo de via. Logradouro representado por linha central, com nome oficial e codlog opcional.","synonymous_pt":["eixo de logradouro","ruas"]}'::jsonb),
   (31,'via_full',       'line', false, 'Via line, with all metadata (official name, optional code and others)', NULL),
   (32,'via_ext',        'line', true,  'Via line, with external metadata at cadvia_cmpl', NULL),
   (33,'via_none',       'line', false, 'Via line with no metadata', NULL),
 
-  (40,'genericvia',           'class', null,  'Generic-via line. Complementar parcel and block divider: railroad, waterway or other.', '{"description_pt":"Via complementar generalizada. Qualquer linha divisora de lotes e quadras: rios, ferrovias, etc. Permite gerar a quadra generalizada.","synonymous_pt":["hidrovia","ferrovia","limite de município"]}'::jsonb),
+  (40,'genericvia',           'class', null,  'Generic-via line. Complementar parcel and block divider: railroad, waterway or other.', '{"shortname_pt":"eixo de etc-via","description_pt":"Via complementar generalizada. Qualquer linha divisora de lotes e quadras: rios, ferrovias, etc. Permite gerar a quadra generalizada.","synonymous_pt":["hidrovia","ferrovia","limite de município"]}'::jsonb),
   (41,'genericvia_full',       'line', false, 'Generic-via line, with all metadata (type, official name, optional code and others)', NULL),
   (42,'genericvia_ext',        'line', true,  'Generic-via line, with external metadata', NULL),
   (43,'genericvia_none',       'line', false, 'Generic-via line with no metadata', NULL),
 
-  (50,'building',        'class', null, 'Building polygon.', '{"description_pt":"Polígono de edificação.","synonymous_pt":["construções","construção"]}'::jsonb),
+  (50,'building',        'class', null, 'Building polygon.', '{"shortname_pt":"construção","description_pt":"Polígono de edificação.","synonymous_pt":["construções","construção"]}'::jsonb),
   (51,'building_full',   'poly', false, 'Building polygon with all attributes, via_name and number.', NULL),
   (52,'building_ext',    'poly', true,  'Building polygon with no (or some) metadata, external metadata at address_cmpl or address_full.', NULL),
   (53,'building_none',   'poly', false, 'Building polygon-only, no metadata (or no core metadata).', NULL),
 
-  (60,'parcel',        'class', null, 'Parcel polygon (land lot).', '{"description_pt":"Polígono de lote.","synonymous_pt":["lote","parcela","terreno"]}'::jsonb),
+  (60,'parcel',        'class', null, 'Parcel polygon (land lot).', '{"shortname_pt":"lote","description_pt":"Polígono de lote.","synonymous_pt":["lote","parcela","terreno"]}'::jsonb),
   (61,'parcel_full',   'poly', false, 'Parcel polygon with all attributes, its main via_name and number.', NULL),
   (62,'parcel_ext',    'poly', true,  'Parcel polygon-only, all metadata external.', NULL),
   (63,'parcel_none',   'poly', false, 'Parcel polygon-only, no metadata.', NULL),
 
-  (70,'nsvia',        'class', null, 'Namespace of vias, a name delimited by a polygon.', '{"description_pt":"Espaço-de-nomes para vias, um nome delimitado por polígono. Tipicamente nome de bairro ou de loteamento. Complementa o nome de via em nomes duplicados (repetidos dentro do mesmo município mas não dentro do mesmo nsvia).","synonymous_pt":["bairro","loteamento"]}'::jsonb),
+  (70,'nsvia',        'class', null, 'Namespace of vias, a name delimited by a polygon.', '{"shortname_pt":"bairro","description_pt":"Espaço-de-nomes para vias, um nome delimitado por polígono. Tipicamente nome de bairro ou de loteamento. Complementa o nome de via em nomes duplicados (repetidos dentro do mesmo município mas não dentro do mesmo nsvia).","synonymous_pt":["bairro","loteamento"]}'::jsonb),
   (71,'nsvia_full',   'poly', false, 'Namespace of vias polygon with name and optional metadata', NULL),
   (72,'nsvia_ext',    'poly', true,  'Namespace of vias polygon with external metadata', NULL),
 
-  (80,'block',        'class', null, 'Urban block and similar structures, delimited by a polygon.', '{"description_pt":"Quadras ou divisões poligonais similares.","synonymous_pt":["quadra"]}'::jsonb),
+  (80,'block',        'class', null, 'Urban block and similar structures, delimited by a polygon.', '{"shortname_pt":"quadra","description_pt":"Quadras ou divisões poligonais similares.","synonymous_pt":["quadra"]}'::jsonb),
   (81,'block_full',   'poly', false, 'Urban block with IDs and all other jurisdiction needs', NULL),
   (82,'block_none',   'poly', false,  'Urban block with no ID', NULL)
-
 ;
 -- Para a iconografia do site:
 -- SELECT f.ftname as "feature type", t.geomtype as "geometry type", f.description from ingest.feature_type f inner JOIN (select  substring(ftname from '^[^_]+') as ftgroup, geomtype  from ingest.feature_type where geomtype!='class' group by 1,2) t ON t.ftgroup=f.ftname ;--where t.geomtype='class';
@@ -220,26 +217,10 @@ INSERT INTO ingest.feature_type VALUES
 -- copy ( select lpad(ftid::text,2,'0') ftid, ftname, description, info->>'description_pt' as description_pt, array_to_string(jsonb_array_totext(info->'synonymous_pt'),'; ') as synonymous_pt from ingest.feature_type where geomtype='class' ) to '/tmp/pg_io/featur_type_classes.csv' CSV HEADER;
 -- copy ( select lpad(ftid::text,2,'0') ftid, ftname,geomtype, iif(need_join,'yes'::text,'no') as need_join, description  from ingest.feature_type where geomtype!='class' ) to '/tmp/pg_io/featur_types.csv' CSV HEADER;
 
-CREATE VIEW ingest.vw01info_feature_type AS
-  SELECT ftid, ftname, geomtype, need_join, description,
-       COALESCE(f.info,'{}'::jsonb) || (
-         SELECT to_jsonb(t2) FROM (
-           SELECT c.ftid as class_ftid, c.ftname as class_ftname,
-                  c.description as class_description,
-                  c.info as class_info
-           FROM ingest.feature_type c
-           WHERE c.geomtype='class' AND c.ftid = 10*round(f.ftid/10)
-         ) t2
-       ) AS info
-  FROM ingest.feature_type f
-  WHERE f.geomtype!='class'
-;
--------
-
 -- DROP TABLE ingest.layer_file;
 CREATE TABLE ingest.layer_file (
   file_id serial NOT NULL PRIMARY KEY,
-  pck_id float4 NOT NULL CHECK( digpreserv_packid_isvalid(pck_id) ), -- package file ID, not controled here. Talvez seja packVers (package and version) ou pck_id com real
+  pck_id real NOT NULL CHECK( digpreserv_packid_isvalid(pck_id) ), -- package file ID, not controled here. Talvez seja packVers (package and version) ou pck_id com real
   pck_fileref_sha256 text NOT NULL CHECK( pck_fileref_sha256 ~ '^[0-9a-f]{64,64}\.[a-z0-9]+$' ),
   ftid smallint NOT NULL REFERENCES ingest.feature_type(ftid),
   file_type text,  -- csv, geojson, shapefile, etc.
@@ -276,17 +257,63 @@ CREATE TABLE ingest.feature_asis (
   UNIQUE(file_id,feature_id)
 );
 
+-- -- -- --
+--  VIEWS:
+
+DROP VIEW IF EXISTS ingest.vw01info_feature_type;
+CREATE VIEW ingest.vw01info_feature_type AS
+  SELECT ftid, ftname, geomtype, need_join, description,
+       COALESCE(f.info,'{}'::jsonb) || (
+         SELECT to_jsonb(t2) FROM (
+           SELECT c.ftid as class_ftid, c.ftname as class_ftname,
+                  c.description as class_description,
+                  c.info as class_info
+           FROM ingest.feature_type c
+           WHERE c.geomtype='class' AND c.ftid = 10*round(f.ftid/10)
+         ) t2
+       ) AS info
+  FROM ingest.feature_type f
+  WHERE f.geomtype!='class'
+;
+COMMENT ON VIEW ingest.vw01info_feature_type
+  IS 'Adds class_ftname, class_description and class_info to ingest.feature_type.info.'
+;
+
+DROP VIEW IF EXISTS ingest.vw02simple_feature_asis;
+CREATE VIEW ingest.vw02simple_feature_asis AS
+ WITH dump AS (
+    SELECT *, (ST_DUMP(geom)).geom AS geometry
+    FROM ingest.feature_asis
+ )
+   SELECT file_id, feature_id, properties, geometry::geometry(POLYGON,4326) AS geom
+   FROM dump
+   WHERE  GeometryType(geom)='MULTIPOLYGON'
+  UNION
+   SELECT file_id, feature_id, properties, geometry::geometry(LINESTRING,4326)
+   FROM dump
+   WHERE  GeometryType(geom)='MULTILINESTRING'
+  UNION
+   SELECT file_id, feature_id, properties, geom
+   FROM dump
+   WHERE  GeometryType(geom) NOT IN ('MULTILINESTRING','MULTIPOLYGON')
+;
+COMMENT ON VIEW ingest.vw02simple_feature_asis
+  IS 'Normalize (and simplify) geometries of ingest.feature_asis, when it is a redundant multi-geometry.'
+;
+
+-- uso do feature_id como gid:
+-- select count(*) n, count(distinct feature_id::text||','||file_id::text) from ingest.feature_asis
 
 ----------------
 ----------------
 -- Ingest AS-IS
 
-
 CREATE or replace FUNCTION ingest.layer_file_geomtype(
   p_file_id integer
 ) RETURNS text[] AS $f$
-  SELECT array[geomtype,ftname]
-  FROM ingest.feature_type
+  -- ! pendente revisão para o caso shortname multiplingual, aqui usando só 'pt'
+  SELECT array[geomtype, ftname, info->>'class_ftname', info->'class_info'->>'shortname_pt']
+  FROM ingest.vw01info_feature_type
   WHERE ftid = (
     SELECT ftid
     FROM ingest.layer_file
@@ -294,7 +321,7 @@ CREATE or replace FUNCTION ingest.layer_file_geomtype(
   )
 $f$ LANGUAGE SQL;
 COMMENT ON FUNCTION ingest.layer_file_geomtype(integer)
-  IS 'Geomtype and ftname of a layer_file.'
+  IS '[Geomtype,ftname,class_ftname,shortname_pt] of a layer_file.'
 ;
 
 CREATE or replace FUNCTION ingest.feature_asis_geohashes(
@@ -321,8 +348,10 @@ CREATE or replace FUNCTION ingest.feature_asis_geohashes(
 $f$ LANGUAGE SQL;
 
 CREATE or replace FUNCTION ingest.feature_asis_assign_volume(
-    p_file_id integer  -- ID at ingest.layer_file
+    p_file_id integer,  -- ID at ingest.layer_file
+    p_usemedian boolean DEFAULT false
 ) RETURNS jsonb AS $f$
+  WITH get_layer_type AS (SELECT (ingest.layer_file_geomtype(p_file_id))[1] AS gtype)
   SELECT to_jsonb(t3)
   FROM (
       SELECT n, CASE gtype
@@ -335,20 +364,26 @@ CREATE or replace FUNCTION ingest.feature_asis_assign_volume(
           WHEN 'line'  THEN 'km'
           ELSE  ''
         END size_unit,
-        bbox_km2
+        bbox_km2,
+        size_mdn
       FROM (
         SELECT gtype, n, CASE gtype
-            WHEN 'poly'  THEN round( ST_Area(geom,true)/1000000, 1)::int
-            WHEN 'line'  THEN round( ST_Length(geom,true)/1000, 1)::int
+            WHEN 'poly'  THEN round( ST_Area(geom,true)/1000000.0)::int
+            WHEN 'line'  THEN round( ST_Length(geom,true)/1000.0)::int
             ELSE  null::int
           END size,
-          round( ST_Area(ST_OrientedEnvelope(geom),true)/1000000, 1)::int AS bbox_km2
+          round( ST_Area(ST_OrientedEnvelope(geom),true)/1000000, 1)::int AS bbox_km2,
+          round(size_mdn,3) AS size_mdn
         FROM (
-            SELECT count(*) n, st_collect(geom) as geom
-            FROM ingest.feature_asis WHERE file_id=p_file_id
-        ) t1a, (
-          SELECT (ingest.layer_file_geomtype(p_file_id))[1] AS gtype
-        ) t1b
+            SELECT count(*) n, st_collect(geom) as geom, CASE gtype --(gtype||iif(p_usemedian,'','_no'::text))
+                WHEN 'poly'  THEN percentile_disc (0.5) WITHIN GROUP(ORDER BY ST_Area(geom,true)) /1000000.0
+                WHEN 'line'  THEN percentile_disc (0.5) WITHIN GROUP(ORDER BY ST_Length(geom,true)) /1000.0
+                ELSE  null::float
+                END size_mdn
+            FROM ingest.feature_asis, get_layer_type
+            WHERE file_id=p_file_id
+            GROUP BY gtype
+        ) t1a, get_layer_type
       ) t2
   ) t3
 $f$ LANGUAGE SQL;
@@ -356,7 +391,7 @@ $f$ LANGUAGE SQL;
 CREATE or replace FUNCTION ingest.feature_asis_assign(
     p_file_id integer  -- ID at ingest.layer_file
 ) RETURNS jsonb AS $f$
-  SELECT ingest.feature_asis_assign_volume(p_file_id)
+  SELECT ingest.feature_asis_assign_volume(p_file_id,true)
     || jsonb_build_object(
         'distribution',
         geohash_distribution_summary( ingest.feature_asis_geohashes(p_file_id,ghs_size), ghs_size, 10, 0.7)
@@ -365,6 +400,56 @@ CREATE or replace FUNCTION ingest.feature_asis_assign(
     SELECT CASE WHEN (ingest.layer_file_geomtype(p_file_id))[1]='poly' THEN 5 ELSE 6 END AS ghs_size
   ) t
 $f$ LANGUAGE SQL;
+
+CREATE or replace FUNCTION ingest.feature_asis_assign_format(
+    p_file_id integer,  -- ID at ingest.layer_file
+    p_layer_type text DEFAULT NULL,
+    p_layer_name text DEFAULT '',
+    p_glink text DEFAULT '' -- ex. http://git.AddressForAll.org/out-BR2021-A4A/blob/main/data/SP/RibeiraoPreto/_pk058/
+) RETURNS text AS $f$
+  SELECT  format(
+   $$<tr>
+<td><b>%s</b><br/>(%s)</td>
+<td><b>Quantity</b>: %s %s &#160;&#160;&#160; bbox_km2: %s &#160;&#160;&#160; %s
+<br/><b>Distribution</b>: %s.
+<br/><b>Package</b> file: <code>%s</code>
+<br/>Sub-file: <b>%s</b> with MD5 <code>%s</code> (%s bytes modifyed in %s)
+</td>
+</tr>$$,
+   CASE WHEN p_layer_type IS NULL THEN layerinfo[2] ELSE p_layer_type END,
+   CASE WHEN p_layer_name>'' OR layerinfo[4] IS NULL THEN p_layer_name ELSE layerinfo[4] END,
+   feature_asis_summary->>'n',
+   feature_asis_summary->>'n_unit',
+   feature_asis_summary->>'bbox_km2',
+   CASE WHEN feature_asis_summary?'size' THEN 'Total size: '||(feature_asis_summary->>'size') ||' '|| (feature_asis_summary->>'size_unit') END,
+   geohash_distribution_format(feature_asis_summary->'distribution', true, p_glink|| layerinfo[3] ||'_'),
+   pck_fileref_sha256,
+   file_type,
+   hash_md5,
+   file_meta->>'size',
+   substr(file_meta->>'modification',1,10)
+  ) as htmltabline
+  FROM ingest.layer_file, (SELECT ingest.layer_file_geomtype(p_file_id) as layerinfo) t
+  WHERE file_id=p_file_id
+$f$ LANGUAGE SQL;
+
+CREATE or replace FUNCTION ingest.package_layers_summary(
+  p_pck_id real,
+  p_caption text DEFAULT 'Package XX version YY, jurisdiction ZZ',
+  p_glink text DEFAULT '' -- ex. http://git.AddressForAll.org/out-BR2021-A4A/blob/main/data/SP/RibeiraoPreto/_pk058/
+) RETURNS xml AS $f$
+  SELECT xmlelement(
+  	 name table,
+  	 xmlelement(name caption, p_caption),
+  	 xmlagg( trinfo::xml ORDER BY trinfo )
+  	)
+  FROM (
+    SELECT ingest.feature_asis_assign_format(file_id, null, '', p_glink) AS trinfo
+    FROM ingest.layer_file
+    WHERE pck_id=p_pck_id
+  ) t
+$f$ LANGUAGE SQL;
+-- SELECT volat_file_write( '/tmp/pg_io/pk'||floor(pck_id)::text||'readme_table.txt', ingest.package_layers_summary(pck_id)::text ) FROM (select distinct pck_id from ingest.layer_file) t;
 
 -----
 
@@ -636,6 +721,20 @@ $wrap$ LANGUAGE SQL;
 COMMENT ON FUNCTION ingest.any_load(text,text,text,text,text,text,text[],text,boolean)
   IS 'Wrap to ingest.any_load(1,2,3,4=real) using string format DD_DD.'
 ;
+
+----
+
+CREATE or replace FUNCTION ingest.layer_file_distribution_prefixes(
+  p_file_id int
+) RETURNS text[] AS $f$
+  SELECT array_agg(p ORDER BY length(p) desc, p) FROM (
+    SELECT jsonb_object_keys(feature_asis_summary->'distribution') p
+    FROM ingest.layer_file WHERE file_id=p_file_id
+  ) t
+$f$ LANGUAGE SQL;
+-- for use with geohash_checkprefix()
+-- select file_id, ingest.layer_file_distribution_prefixes(file_id)as prefixes FROM ingest.layer_file
+
 
 /*
 # falta

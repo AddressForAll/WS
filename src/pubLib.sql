@@ -344,6 +344,16 @@ $f$ LANGUAGE SQL;
 
 ------
 
+CREATE or replace FUNCTION geohash_checkprefix(
+  p_check text, p_prefixes text[]
+) RETURNS text AS $f$
+  SELECT x
+  FROM unnest(p_prefixes) t(x)
+  WHERE p_check like (x||'%')
+  ORDER BY length(x) desc, x
+  LIMIT 1
+$f$ LANGUAGE SQL;
+
 CREATE or replace FUNCTION geohash_distribution_tots(p_j jsonb) RETURNS jsonb AS $f$
   SELECT jsonb_build_object(
     'keys',  MAX( jsonb_object_length(p_j) ), --constant
@@ -357,6 +367,21 @@ CREATE or replace FUNCTION geohash_distribution_tots(p_j jsonb) RETURNS jsonb AS
   FROM  jsonb_each(p_j) t(ghs,n)
 $f$ LANGUAGE SQL;
 
+CREATE or replace FUNCTION geohash_distribution_format(
+  p_j jsonb,
+  p_perc boolean DEFAULT true,
+  p_glink text DEFAULT '', -- ex. http://git.AddressForAll.org/out-BR2021-A4A/blob/main/data/SP/RibeiraoPreto/_pk058/via_
+  p_sep text DEFAULT ', '
+) RETURNS text AS $f$
+  WITH scan AS (SELECT ghs,n::int as n FROM jsonb_each(p_j) t1(ghs,n) ORDER BY ghs)
+  SELECT string_agg(
+          CASE
+            WHEN p_glink>'' THEN  '<a href="'||p_glink||ghs||'.geojson"><code>'||ghs||'</code></a>: '
+            ELSE  '<code>'||ghs||'</code>: '
+          END || CASE WHEN p_perc THEN round(100.0*n/tot)::int::text ELSE n::text END || '%'
+         , p_sep )
+  FROM  scan , (SELECT SUM(n::int) tot FROM scan) t2
+$f$ LANGUAGE SQL;
 
 CREATE or replace FUNCTION geohash_distribution_summary(
   p_j jsonb,
@@ -374,9 +399,11 @@ CREATE or replace FUNCTION geohash_distribution_summary(
     p_ghs_size := p_ghs_size-1;
   END IF;
   len := jsonb_object_length(p_j);
+
   IF p_ghs_size<1 OR p_len_max<2 OR len<=p_len_max THEN
     RETURN p_j;
   END IF;
+
   WITH
    j_each AS (
      SELECT ghs, n::int n
