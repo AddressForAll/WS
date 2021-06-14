@@ -260,7 +260,7 @@ CREATE TABLE ingest.feature_asis (
 -- -- -- --
 --  VIEWS:
 
-DROP VIEW IF EXISTS ingest.vw01info_feature_type;
+-- DROP VIEW IF EXISTS ingest.vw01info_feature_type;
 CREATE VIEW ingest.vw01info_feature_type AS
   SELECT ftid, ftname, geomtype, need_join, description,
        COALESCE(f.info,'{}'::jsonb) || (
@@ -280,6 +280,7 @@ COMMENT ON VIEW ingest.vw01info_feature_type
 ;
 
 DROP VIEW IF EXISTS ingest.vw02simple_feature_asis;
+-- validar fazendo count(*) comparativo entre a view e a tabela.
 CREATE VIEW ingest.vw02simple_feature_asis AS
  WITH dump AS (
     SELECT *, (ST_DUMP(geom)).geom AS geometry
@@ -303,6 +304,7 @@ COMMENT ON VIEW ingest.vw02simple_feature_asis
 
 -- uso do feature_id como gid:
 -- select count(*) n, count(distinct feature_id::text||','||file_id::text) from ingest.feature_asis
+
 
 ----------------
 ----------------
@@ -716,11 +718,57 @@ CREATE or replace FUNCTION ingest.any_load(
     p_geom_name text DEFAULT 'geom', -- 8
     p_to4326 boolean DEFAULT true    -- 9. on true converts SRID to 4326 .
 ) RETURNS text AS $wrap$
-   SELECT ingest.any_load($1, $2, $3, $4, digpreserv_packid_to_float($5), $6, $7, $8, $9)
+   SELECT ingest.any_load($1, $2, $3, $4, digpreserv_packid_to_real($5), $6, $7, $8, $9)
 $wrap$ LANGUAGE SQL;
 COMMENT ON FUNCTION ingest.any_load(text,text,text,text,text,text,text[],text,boolean)
   IS 'Wrap to ingest.any_load(1,2,3,4=real) using string format DD_DD.'
 ;
+
+-----
+CREATE or replace VIEW ingest.vw03full_layer_file AS
+  SELECT lf.*, ft.ftname, ft.geomtype, ft.need_join, ft.description, ft.info AS ft_info
+  FROM ingest.layer_file lf INNER JOIN ingest.vw01info_feature_type ft
+    ON lf.ftid=ft.ftid
+;
+
+-- DROP VIEW ingest.vw04test_feature_asis ;
+CREATE or replace VIEW ingest.vw04test_feature_asis AS
+  SELECT v.pck_id, v.ft_info->>'class_ftname' as class_ftname, t.file_id, 
+         v.file_meta->>'file' as file,
+         t.n, t.n_feature_ids,
+         CASE WHEN t.n=t.n_feature_ids  THEN 'ok' ELSE '!BUG!' END AS is_ok_msg,
+          t.n=t.n_feature_ids AS is_ok
+  FROM (
+    SELECT file_id, COUNT(*) n, COUNT(DISTINCT feature_id) n_feature_ids
+    FROM ingest.feature_asis
+    GROUP BY 1
+  ) t INNER JOIN ingest.vw03full_layer_file v
+    ON v.file_id = t.file_id
+  ORDER BY 1,2,3
+;
+
+CREATE or replace FUNCTION ingest.qgis_vwadmin_feature_asis(
+  p_mode text -- 'create' or 'drop'
+) RETURNS text AS $f$
+  DECLARE
+    q_query text;
+  BEGIN
+    SELECT string_agg( format(
+      CASE  p_mode
+        WHEN 'drop' THEN 'DROP VIEW IF EXISTS vw_asis_pk%s_f%s_%s; -- %s.'
+        ELSE 'CREATE VIEW vw_asis_pk%s_f%s_%s AS SELECT feature_id AS gid, properties, geom FROM ingest.feature_asis WHERE file_id=%s;'
+      END
+      ,digpreserv_packid_to_str(pck_id,true)
+      ,file_id
+      ,feature_asis_summary->>'n_unit'
+      ,file_id
+    ), E' \n' )
+    INTO q_query
+    FROM ingest.layer_file;
+    EXECUTE q_query;
+    RETURN E'\n(check before NO BUGs with SELECT * FROM ingest.vw04test_feature_asis)\n---\nok! all '||p_mode||E'\nCheck on psql by \\dv vw_asis_*';
+  END;
+$f$ LANGUAGE PLpgSQL;
 
 ----
 
