@@ -52,3 +52,9 @@ _endpoint_ (URI template) |  Descrição
 `postal.osm.codes/{country}/{postal_code}`  | resolve código ISO da jurisdição (country code) e resolve localmente o postalcode (por exemplo no Brasil com a base do CEP). Alternativamente `country~x`  resolve código publico alternativo, tal como [CRP](https://github.com/AddressForAll/CRP).
 
 See also [OSMcodes endpoints](docs/osmcodes-endpoints.md).
+
+## DIGITAL-GUARD.ORG
+
+Projeto que garante a **"Guarda do patrimônio Digital"**. O nome original do projeto era o substantivo adotado no jargão técnico,  *Digital Preservation*.   Aos poucos está sendo transferido.
+
+
