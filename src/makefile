@@ -197,7 +197,7 @@ status_sites:
 		for protocol in $(sites_protocols) ; do \
 			res=`curl -o /dev/null -s -w "%{http_code}\n" $$protocol://$$site `; \
 			if [ "$$res" != "$(sites_return_code)" ] ; then \
-				>&2 echo Erro no site $$protocol://$$site; \
+				>&2 echo Erro $$res no site $$protocol://$$site; \
 			fi ; \
 		done ; \
 	done
