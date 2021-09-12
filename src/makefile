@@ -10,6 +10,14 @@ pg_io    =/tmp/pg_io
 pg_uri   =postgres://postgres@localhost
 iniExts  ="CREATE EXTENSION IF NOT EXISTS hstore; CREATE EXTENSION IF NOT EXISTS postgis;"
 
+sites_domains = addressforall.org addressforall.com www.addressforall.org git-raw.addressforall.org api-htm.addressforall.org \
+		osms.addressforall.org api.addressforall.org docs.addressforall.org \
+		git-raw.osm.codes olc.osm.codes osm.codes www.osm.codes \
+		digital-guard.org www.digital-guard.org docs.digital-guard.org \
+		docs.itgs.org.br itgs.org.br www.itgs.org.br
+sites_protocols =  https http
+sites_return_code = 200
+
 ## -- -- Functions a revisar -- --
 ## pode ser INCLUDE!
 
@@ -183,6 +191,16 @@ status_disk_abuse:
 	@(du -h /var/www | grep -v "^[0-9][0-9,\.]*[KM]") || true
 	@(du -h /tmp     | grep -v "^[0-9][0-9,\.]*[KM]") || true
 	@echo "... if no line, it is ok!"
+
+status_sites:
+	@for site in $(sites_domains); do \
+		for protocol in $(sites_protocols) ; do \
+			res=`curl -o /dev/null -s -w "%{http_code}\n" $$protocol://$$site `; \
+			if [ "$$res" != "$(sites_return_code)" ] ; then \
+				>&2 echo Erro no site $$protocol://$$site; \
+			fi ; \
+		done ; \
+	done
 
 # # #
 dir_ini:
