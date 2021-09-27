@@ -625,7 +625,7 @@ CREATE or replace FUNCTION ingest.any_load(
     msg_ret text;
     num_items bigint;
   BEGIN
-  IF p_method='csv2sql' THEN
+  IF p_method='csv2sql' OR p_method='csv2unix2utf8' THEN
     p_fileref := p_fileref || '.csv';
     -- other checks
   ELSE
