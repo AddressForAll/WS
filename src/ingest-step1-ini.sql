@@ -206,6 +206,7 @@ INSERT INTO ingest.feature_type VALUES
   (70,'nsvia',        'class', null, 'Namespace of vias, a name delimited by a polygon.', '{"shortname_pt":"bairro","description_pt":"Espaço-de-nomes para vias, um nome delimitado por polígono. Tipicamente nome de bairro ou de loteamento. Complementa o nome de via em nomes duplicados (repetidos dentro do mesmo município mas não dentro do mesmo nsvia).","synonymous_pt":["bairro","loteamento"]}'::jsonb),
   (71,'nsvia_full',   'poly', false, 'Namespace of vias polygon with name and optional metadata', NULL),
   (72,'nsvia_ext',    'poly', true,  'Namespace of vias polygon with external metadata', NULL),
+  -- renomear para 'namedArea'
 
   (80,'block',        'class', null, 'Urban block and similar structures, delimited by a polygon.', '{"shortname_pt":"quadra","description_pt":"Quadras ou divisões poligonais similares.","synonymous_pt":["quadra"]}'::jsonb),
   (81,'block_full',   'poly', false, 'Urban block with IDs and all other jurisdiction needs', NULL),
@@ -247,14 +248,21 @@ CREATE TABLE ingest.tmp_geojson_feature (
   properties jsonb,
   jgeom jsonb,
   UNIQUE(file_id,feature_id)
-);
+); -- to be feature_asis after GeoJSON ingestion.
 
 CREATE TABLE ingest.feature_asis (
   file_id int NOT NULL REFERENCES ingest.layer_file(file_id),
   feature_id int NOT NULL,
   properties jsonb,
-  geom geometry,
+  geom geometry NOT NULL CHECK ( st_srid(geom)=4326 ),
   UNIQUE(file_id,feature_id)
+);
+
+CREATE TABLE ingest.cadastral_asis (
+  file_id int NOT NULL REFERENCES ingest.layer_file(file_id),
+  cad_id int NOT NULL,
+  properties jsonb NOT NULL,
+  UNIQUE(file_id,cad_id)
 );
 
 -- -- -- --
