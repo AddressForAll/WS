@@ -178,6 +178,10 @@ INSERT INTO ingest.feature_type VALUES
   (11,'cadvia_cmpl',      'none', true,   'Cadastral via with metadata complementing via_ext (via_cod,via_name).', NULL),
   (12,'cadvia_noid',      'none', false,   'Via name (and optional metadata) with no ID for join with via_ext.', NULL),
 
+  (15,'cadgenericvia',      'class', null,  'Cadastral generic-via (name of generic-via).', '{"shortname_pt":"limite","description_pt":"Generic-via cadastral (nome de Generic-via), complemento da geográfica. Generic-via representado por dados cadastrais apenas.","synonymous_pt":["nomes de limite","nomes de rua"]}'::jsonb),
+  (16,'cadgenericvia_cmpl', 'none', true,   'Cadastral generic-via with metadata complementing genericvia_ext (genericvia_cod,genericvia_name).', NULL),
+  (17,'cadgenericvia_noid', 'none', false,   'Generic-via name (and optional metadata) with no ID for join with genericvia_ext.', NULL),
+  
   (20,'geoaddress',         'class', null,  'Geo-address point.', '{"shortname_pt":"endereço","description_pt":"Geo-endereço. Representação geográfica do endereço, como ponto.","synonymous_pt":["geo-endereço","ponto de endereço","endereço georreferenciado","ponto de endereçamento postal"]}'::jsonb),
   (21,'geoaddress_full',    'point', false, 'Geo-address point with all attributes, via_name and number.', NULL),
   (22,'geoaddress_ext',     'point', true,  'Geo-address point with no (or some) metadata, external metadata at address_cmpl or address_full.', NULL),
@@ -190,7 +194,7 @@ INSERT INTO ingest.feature_type VALUES
 
   (40,'genericvia',           'class', null,  'Generic-via line. Complementar parcel and block divider: railroad, waterway or other.', '{"shortname_pt":"eixo de etc-via","description_pt":"Via complementar generalizada. Qualquer linha divisora de lotes e quadras: rios, ferrovias, etc. Permite gerar a quadra generalizada.","synonymous_pt":["hidrovia","ferrovia","limite de município"]}'::jsonb),
   (41,'genericvia_full',       'line', false, 'Generic-via line, with all metadata (type, official name, optional code and others)', NULL),
-  (42,'genericvia_ext',        'line', true,  'Generic-via line, with external metadata', NULL),
+  (42,'genericvia_ext',        'line', true,  'Generic-via line, with external metadata at cadgenericvia_cmpl', NULL),
   (43,'genericvia_none',       'line', false, 'Generic-via line with no metadata', NULL),
 
   (50,'building',        'class', null, 'Building polygon.', '{"shortname_pt":"construção","description_pt":"Polígono de edificação.","synonymous_pt":["construções","construção"]}'::jsonb),
