@@ -638,11 +638,11 @@ CREATE or replace FUNCTION ingest.any_load(
     msg_ret text;
     num_items bigint;
   BEGIN
-  IF p_method='csv2sql' OR p_method='csv2unix2utf8' THEN
+  IF p_method='csv2sql' THEN
     p_fileref := p_fileref || '.csv';
     -- other checks
   ELSE
-    p_fileref := p_fileref || '.shp';
+    p_fileref := TRIM(TRAILING '.shp' FROM p_fileref) || '.shp';
   END IF;
   q_file_id := ingest.getmeta_to_file(p_fileref,p_ftname,p_pck_id,p_pck_fileref_sha256); -- not null when proc_step=1. Ideal retornar array.
   IF q_file_id IS NULL THEN
