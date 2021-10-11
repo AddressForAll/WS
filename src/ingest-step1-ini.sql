@@ -170,7 +170,7 @@ CREATE TABLE ingest.feature_type (  -- replacing old optim.origin_content_type
 -- DELETE FROM ingest.feature_type;
 INSERT INTO ingest.feature_type VALUES
   (0,'address',       'class', null,  'Cadastral address.','{"shortname_pt":"endereço","description_pt":"Endereço cadastral, representação por nome de via e numeração predial.","synonymous_pt":["endereço postal","endereço","planilha dos endereços","cadastro de endereços"]}'::jsonb),
-  (1,'address_full',  'none', true,   'Cadastral address (gid,via_id,via_name,number,postal_code,etc), joining with geoaddress_ext by a gid.', NULL),
+  --(1,'address_full',  'none', true,   'Cadastral address (gid,via_id,via_name,number,postal_code,etc), joining with geoaddress_ext by a gid.', NULL),
   (2,'address_cmpl',  'none', true,   'Cadastral address, like address_full with only partial core metadata.', NULL),
   (3,'address_noid',  'none', false,  'Cadastral address with some basic metadata but no standard gid for join with geo).', NULL),
 
