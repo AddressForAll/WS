@@ -236,7 +236,7 @@ CREATE or replace FUNCTION pg_csv_head(
   separator text default ',',    -- the CSV separator
   linesize bigint default 9000   -- header maximum size in UTF8 characteres.
 ) RETURNS text[] AS $f$
-  SELECT regexp_split_to_array(s, separator)
+  SELECT regexp_split_to_array(replace(s,'"',''), separator)
   FROM regexp_split_to_table(  pg_read_file(filename,0,linesize,true),  E'\n') t(s)
   LIMIT 1
 $f$ LANGUAGE SQL IMMUTABLE;
