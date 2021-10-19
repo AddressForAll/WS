@@ -856,27 +856,11 @@ CREATE or replace FUNCTION ingest.join(
       $$
       WITH
       layer_features AS (
-      SELECT * 
-      FROM 
+      UPDATE ingest.feature_asis l
+      SET properties =  l.properties || c.properties-'%s'
+      FROM
       (
-        SELECT * 
-        FROM ingest.feature_asis 
-        WHERE file_id IN 
-            (
-            SELECT file_id 
-            FROM ingest.layer_file 
-            WHERE ftid IN 
-                (
-                SELECT ftid::int 
-                FROM ingest.feature_type 
-                WHERE ftname=lower('%s')
-                ) 
-                AND pck_fileref_sha256 = '%s'
-            )
-      ) AS l
-      LEFT JOIN 
-      (
-        SELECT * 
+        SELECT *
         FROM ingest.cadastral_asis 
         WHERE file_id IN 
             (
@@ -891,15 +875,29 @@ CREATE or replace FUNCTION ingest.join(
                 AND pck_fileref_sha256 = '%s'
             )
       ) AS c
-      ON l.properties->'%s' = c.properties->'%s')
+      WHERE l.properties->'%s' = c.properties->'%s' AND l.file_id IN 
+            (
+            SELECT file_id 
+            FROM ingest.layer_file 
+            WHERE ftid IN 
+                (
+                SELECT ftid::int 
+                FROM ingest.feature_type 
+                WHERE ftname=lower('%s')
+                ) 
+                AND pck_fileref_sha256 = '%s'
+            )
+            RETURNING 1
+            )
       SELECT COUNT(*) FROM layer_features
     $$,
-    p_ftname_layer,
-    p_fileref_layer_sha256,
+    p_join_col_cad,
     p_ftname_cad,
     p_fileref_cad_sha256,
     p_join_col_layer,
-    p_join_col_cad
+    p_join_col_cad,
+    p_ftname_layer,
+    p_fileref_layer_sha256
   );
 
   EXECUTE q_query INTO num_items;
