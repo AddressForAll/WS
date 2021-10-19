@@ -838,3 +838,80 @@ $f$ LANGUAGE SQL;
 -- ingest.layer_file tem muitos ingest.file_layer(ftype!)  que tem suas geometrias em ingest.layer_geom
 
 -- SELECT ingest.geom_asis_filemeta('/tmp/bigbigfile.zip');
+
+CREATE or replace FUNCTION ingest.join(
+    p_ftname_layer text,
+    p_join_col_layer text,
+    p_fileref_layer_sha256 text,
+    p_ftname_cad text,
+    p_join_col_cad text,
+    p_fileref_cad_sha256 text
+) RETURNS text AS $f$
+  DECLARE
+    q_query text;
+    msg_ret text;
+    num_items bigint;
+  BEGIN
+  q_query := format(
+      $$
+      WITH
+      layer_features AS (
+      SELECT * 
+      FROM 
+      (
+        SELECT * 
+        FROM ingest.feature_asis 
+        WHERE file_id IN 
+            (
+            SELECT file_id 
+            FROM ingest.layer_file 
+            WHERE ftid IN 
+                (
+                SELECT ftid::int 
+                FROM ingest.feature_type 
+                WHERE ftname=lower('%s')
+                ) 
+                AND pck_fileref_sha256 = '%s'
+            )
+      ) AS l
+      LEFT JOIN 
+      (
+        SELECT * 
+        FROM ingest.cadastral_asis 
+        WHERE file_id IN 
+            (
+            SELECT file_id 
+            FROM ingest.layer_file 
+            WHERE ftid IN 
+                (
+                SELECT ftid::int 
+                FROM ingest.feature_type 
+                WHERE ftname=lower('%s')
+                ) 
+                AND pck_fileref_sha256 = '%s'
+            )
+      ) AS c
+      ON l.properties->'%s' = c.properties->'%s')
+      SELECT COUNT(*) FROM layer_features
+    $$,
+    p_ftname_layer,
+    p_fileref_layer_sha256,
+    p_ftname_cad,
+    p_fileref_cad_sha256,
+    p_join_col_layer,
+    p_join_col_cad
+  );
+
+  EXECUTE q_query INTO num_items;
+  
+  msg_ret := format(
+    E'Join %s items.',
+    num_items
+  );
+  
+  RETURN msg_ret;
+  END;
+$f$ LANGUAGE PLpgSQL;
+COMMENT ON FUNCTION ingest.join(text,text,text,text,text,text)
+  IS 'Join layer and cadlayer.'
+;
