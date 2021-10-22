@@ -210,6 +210,7 @@ INSERT INTO ingest.feature_type VALUES
   (70,'nsvia',        'class', null, 'Namespace of vias, a name delimited by a polygon.', '{"shortname_pt":"bairro","description_pt":"Espaço-de-nomes para vias, um nome delimitado por polígono. Tipicamente nome de bairro ou de loteamento. Complementa o nome de via em nomes duplicados (repetidos dentro do mesmo município mas não dentro do mesmo nsvia).","synonymous_pt":["bairro","loteamento"]}'::jsonb),
   (71,'nsvia_full',   'poly', false, 'Namespace of vias polygon with name and optional metadata', NULL),
   (72,'nsvia_ext',    'poly', true,  'Namespace of vias polygon with external metadata', NULL),
+  (73,'nsvia_none',   'poly', true,  'Namespace of vias polygon-only, no metadata', NULL),
   -- renomear para 'namedArea'
 
   (80,'block',        'class', null, 'Urban block and similar structures, delimited by a polygon.', '{"shortname_pt":"quadra","description_pt":"Quadras ou divisões poligonais similares.","synonymous_pt":["quadra"]}'::jsonb),
@@ -383,7 +384,7 @@ CREATE or replace FUNCTION ingest.feature_asis_assign_volume(
       FROM (
         SELECT gtype, n, CASE gtype
             WHEN 'poly'  THEN round( ST_Area(geom,true)/1000000.0)::int
-            WHEN 'line'  THEN round( ST_Length(geom,true)/1000.0)::int
+            WHEN 'line'  THEN round( ST_Length(geom,true)/1000.0)
             ELSE  null::int
           END size,
           round( ST_Area(ST_OrientedEnvelope(geom),true)/1000000, 1)::int AS bbox_km2,
