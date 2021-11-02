@@ -387,7 +387,8 @@ CREATE or replace FUNCTION geohash_distribution_summary(
   p_j jsonb,
   p_ghs_size int DEFAULT 6, -- 5 para áreas
   p_len_max int DEFAULT 10,
-  p_percentile real DEFAULT 0.75
+  p_percentile real DEFAULT 0.75,
+  p_limite_n int DEFAULT NULL
 ) RETURNS jsonb AS $f$
   DECLARE
     len int;
@@ -404,26 +405,64 @@ CREATE or replace FUNCTION geohash_distribution_summary(
     RETURN p_j;
   END IF;
 
-  WITH
-   j_each AS (
-     SELECT ghs, n::int n
-     FROM  jsonb_each(p_j) t(ghs,n) ORDER BY n
-   ),
-   perc AS (
-    SELECT percentile_disc(p_percentile) WITHIN GROUP (ORDER BY n) as pct
-    FROM j_each
-   )
-   SELECT  jsonb_object_agg( ghs,n ) INTO newdistrib
-   FROM (
-      SELECT ghs, n
-      FROM j_each, perc
-      WHERE n>=pct
-      UNION
-      SELECT substr(ghs,1,p_ghs_size), SUM(n) as n
-      FROM j_each, perc
-      WHERE n<pct
-      GROUP BY 1
-   ) t;
-  RETURN geohash_distribution_summary(newdistrib, p_ghs_size-1, p_len_max, p_percentile);
+  IF p_limite_n IS NULL THEN
+    WITH
+    j_each AS (
+        SELECT ghs, n::int n
+        FROM  jsonb_each(p_j) t(ghs,n) ORDER BY n
+    ),
+    perc AS (
+        SELECT percentile_disc(p_percentile) WITHIN GROUP (ORDER BY n) as pct
+        FROM j_each
+    )
+    SELECT  jsonb_object_agg( ghs,n ) INTO newdistrib
+    FROM (
+            SELECT ghs, n
+            FROM j_each, perc
+            WHERE n>=pct
+
+            UNION
+
+            SELECT substr(ghs,1,p_ghs_size), SUM(n) as n
+            FROM j_each, perc
+            WHERE n<pct
+            GROUP BY 1
+    ) t;
+
+   ELSE
+
+    WITH
+    j_each AS (
+        SELECT ghs, n::int n
+        FROM  jsonb_each(p_j) t(ghs,n) ORDER BY n
+    ),
+    perc AS (
+        SELECT percentile_disc(p_percentile) WITHIN GROUP (ORDER BY n) as pct
+        FROM j_each
+    )
+    SELECT  jsonb_object_agg( ghs,n ) INTO newdistrib
+    FROM (
+            SELECT ghs, n
+            FROM j_each, perc
+            WHERE n>=pct 
+                OR ghs = ANY((
+                    SELECT array_agg(ghs)
+                    FROM j_each, perc
+                    WHERE n<pct
+                    GROUP BY substr(ghs,1,p_ghs_size)
+                    HAVING SUM(n) >= p_limite_n
+                )::text[])
+
+            UNION
+
+            SELECT substr(ghs,1,p_ghs_size), SUM(n) as n
+            FROM j_each, perc
+            WHERE n<pct
+            GROUP BY 1
+            HAVING SUM(n) < p_limite_n
+    ) t;
+    END IF;
+
+  RETURN geohash_distribution_summary(newdistrib, p_ghs_size-1, p_len_max, p_percentile,p_limite_n);
   END;
 $f$ LANGUAGE PLpgSQL;
