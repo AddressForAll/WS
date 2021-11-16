@@ -4,6 +4,7 @@
 
 ## -- -- VARS -- --
 
+gits_basepath = /opt/gits/_a4a
 opt_lock =/opt/lock-mkStatus
 gits     =/opt/gits
 pg_io    =/tmp/pg_io
@@ -95,14 +96,17 @@ ini_step2: ini_step1 $(opt_lock)/WS-makeStep01.~feito
 ini_step2b_ins: # revisar conforme mk-ini_step1.sh que precisaria ser função de array.
 	@echo "------- ingest1 REDO ---------"
 	psql $(pg_uri)/ingest1    < pubLib.sql
+	psql $(pg_uri)/ingest1    < $(gits_basepath)/pg_pubLib-v1/src/pubLib05hcode-distrib.sql
 	psql $(pg_uri)/ingest1    < sys_pubLib.sql
 	psql $(pg_uri)/ingest1    < ingest-step1-ini.sql
 	@echo "------- ingest2 REDO ---------"
 	psql $(pg_uri)/ingest2    < pubLib.sql
+	psql $(pg_uri)/ingest2    < $(gits_basepath)/pg_pubLib-v1/src/pubLib05hcode-distrib.sql
 	psql $(pg_uri)/ingest2    < sys_pubLib.sql
 	psql $(pg_uri)/ingest2    < ingest-step1-ini.sql
 	@echo "------- dl03t_main REDO ---------"
 	psql $(pg_uri)/dl03t_main < pubLib.sql
+	psql $(pg_uri)/dl03t_main < $(gits_basepath)/pg_pubLib-v1/src/pubLib05hcode-distrib.sql
 	psql $(pg_uri)/dl03t_main < sys_pubLib.sql
 	psql $(pg_uri)/dl03t_main < ingest-step1-ini.sql
 
