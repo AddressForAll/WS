@@ -413,7 +413,7 @@ CREATE or replace FUNCTION ingest.feature_asis_assign(
   SELECT ingest.feature_asis_assign_volume(p_file_id,true)
     || jsonb_build_object(
         'distribution',
-        geohash_distribution_summary( ingest.feature_asis_geohashes(p_file_id,ghs_size), ghs_size, 10, 0.7)
+        hcode_distribution_reduce(ingest.feature_asis_geohashes(p_file_id,ghs_size), 2, 1, 500, 5000, 2)
     )
   FROM (
     SELECT CASE WHEN (ingest.layer_file_geomtype(p_file_id))[1]='poly' THEN 5 ELSE 6 END AS ghs_size
