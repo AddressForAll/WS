@@ -860,10 +860,7 @@ CREATE or replace FUNCTION ingest.join(
   q_query := format(
       $$
       WITH
-      layer_features AS (
-      UPDATE ingest.feature_asis l
-      SET properties =  l.properties || c.properties-'%s'
-      FROM
+      cadis AS 
       (
         SELECT *
         FROM ingest.cadastral_asis 
@@ -879,8 +876,43 @@ CREATE or replace FUNCTION ingest.join(
                 ) 
                 AND pck_fileref_sha256 = '%s'
             )
-      ) AS c
-      WHERE l.properties->'%s' = c.properties->'%s' AND l.file_id IN 
+      ),
+      duplicate_keys AS (
+        SELECT asis.properties->'%s'
+        FROM
+        (    
+            SELECT  *
+            FROM ingest.feature_asis 
+            WHERE file_id IN 
+            (
+                SELECT file_id 
+                FROM ingest.layer_file 
+                WHERE ftid IN 
+                    (
+                    SELECT ftid::int 
+                    FROM ingest.feature_type 
+                    WHERE ftname=lower('%s')
+                    ) 
+                    AND pck_fileref_sha256 = '%s'
+            )
+        ) AS asis
+
+        INNER JOIN
+
+        cadis
+            
+        ON asis.properties->'%s' = cadis.properties->'%s'
+
+        GROUP BY asis.properties->'%s'
+        
+        HAVING COUNT(*)>1
+      ),
+      layer_features AS (
+      UPDATE ingest.feature_asis l
+      SET properties =  l.properties || c.properties-'%s'
+      FROM cadis AS c
+      WHERE l.properties->'%s' = c.properties->'%s' 
+            AND l.file_id IN 
             (
             SELECT file_id 
             FROM ingest.layer_file 
@@ -890,19 +922,27 @@ CREATE or replace FUNCTION ingest.join(
                 FROM ingest.feature_type 
                 WHERE ftname=lower('%s')
                 ) 
-                AND pck_fileref_sha256 = '%s'
+                AND pck_fileref_sha256 = '%s' 
             )
+            AND l.properties->'%s' NOT IN (  SELECT * FROM duplicate_keys  )
             RETURNING 1
             )
       SELECT COUNT(*) FROM layer_features
     $$,
-    p_join_col_cad,
     p_ftname_cad,
     p_fileref_cad_sha256,
     p_join_col_layer,
+    p_ftname_layer,
+    p_fileref_layer_sha256,
+    p_join_col_layer,
+    p_join_col_cad,
+    p_join_col_layer,
+    p_join_col_cad,
+    p_join_col_layer,
     p_join_col_cad,
     p_ftname_layer,
-    p_fileref_layer_sha256
+    p_fileref_layer_sha256,
+    p_join_col_layer
   );
 
   EXECUTE q_query INTO num_items;
