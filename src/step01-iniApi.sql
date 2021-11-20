@@ -32,6 +32,11 @@ CREATE or replace VIEW api.auth_user AS SELECT * FROM optim.auth_user
   IS 'Authorized user. An optim table and Digital Preservation core.'
 ;
 
+CREATE or replace VIEW api.redirects AS SELECT * FROM optim.redirects
+; COMMENT ON VIEW api.redirects
+  IS 'An optim core table.'
+;
+
 ----
 CREATE VIEW api.origin_agg1 AS
   SELECT jurisd_base_id, substr(jurisd_isolabel_ext, 1, 2) AS country,

@@ -361,3 +361,10 @@ PREPARE fdw_gen(text) AS SELECT ingest.fdw_generate_getclone($1, 'br', 'optim', 
 -- gera script de download dos dados:
 SELECT optim.fdw_wgets_script('/tmp/pg_io/run_wgets.sh');
 -- por fim rodar inserts no STEP2
+*/
+
+CREATE TABLE optim.redirects(
+   fhash text          NOT NULL PRIMARY KEY, -- sha256
+   furi  text          NOT NULL -- uri
+   ,UNIQUE(fhash,furi)
+);

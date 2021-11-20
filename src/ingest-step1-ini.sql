@@ -170,14 +170,22 @@ CREATE TABLE ingest.feature_type (  -- replacing old optim.origin_content_type
 -- DELETE FROM ingest.feature_type;
 INSERT INTO ingest.feature_type VALUES
   (0,'address',       'class', null,  'Cadastral address.','{"shortname_pt":"endereço","description_pt":"Endereço cadastral, representação por nome de via e numeração predial.","synonymous_pt":["endereço postal","endereço","planilha dos endereços","cadastro de endereços"]}'::jsonb),
-  (1,'address_full',  'none', true,   'Cadastral address (gid,via_id,via_name,number,postal_code,etc), joining with geoaddress_ext by a gid.', NULL),
-  (2,'address_cmpl',  'none', true,   'Cadastral address, like address_full with only partial core metadata.', NULL),
-  (3,'address_noid',  'none', false,  'Cadastral address with some basic metadata but no standard gid for join with geo).', NULL),
+  --(1,'address_full',  'none', true,   'Cadastral address (gid,via_id,via_name,number,postal_code,etc), joining with geoaddress_ext by a gid.', NULL),
+  (1,'address_cmpl',  'none', true,   'Cadastral address, like address_full with only partial core metadata.', NULL),
+  (2,'address_noid',  'none', false,  'Cadastral address with some basic metadata but no standard gid for join with geo).', NULL),
 
+  (5,'cadparcel',           'class', null,  'Cadastral parcel (name of parcel).', '{"shortname_pt":"lote","description_pt":"Lote cadastral (nome de parcel), complemento da geográfica. Lote representado por dados cadastrais apenas.","synonymous_pt":["terreno","parcela"]}'::jsonb),
+  (6,'cadparcel_cmpl',      'none', true,   'Cadastral parcel with metadata complementing parcel_ext (parcel_cod,parcel_name).', NULL),
+  (7,'cadparcel_noid',      'none', false,   'Parcel name (and optional metadata) with no ID for join with parcel_ext.', NULL),
+  
   (10,'cadvia',           'class', null,  'Cadastral via (name of via).', '{"shortname_pt":"logradouro","description_pt":"Via cadastral (nome de via), complemento da geográfica. Logradouro representado por dados cadastrais apenas.","synonymous_pt":["nomes de logradouro","nomes de rua"]}'::jsonb),
   (11,'cadvia_cmpl',      'none', true,   'Cadastral via with metadata complementing via_ext (via_cod,via_name).', NULL),
   (12,'cadvia_noid',      'none', false,   'Via name (and optional metadata) with no ID for join with via_ext.', NULL),
 
+  (15,'cadgenericvia',      'class', null,  'Cadastral generic-via (name of generic-via).', '{"shortname_pt":"limite","description_pt":"Generic-via cadastral (nome de Generic-via), complemento da geográfica. Generic-via representado por dados cadastrais apenas.","synonymous_pt":["nomes de limite","nomes de rua"]}'::jsonb),
+  (16,'cadgenericvia_cmpl', 'none', true,   'Cadastral generic-via with metadata complementing genericvia_ext (genericvia_cod,genericvia_name).', NULL),
+  (17,'cadgenericvia_noid', 'none', false,   'Generic-via name (and optional metadata) with no ID for join with genericvia_ext.', NULL),
+  
   (20,'geoaddress',         'class', null,  'Geo-address point.', '{"shortname_pt":"endereço","description_pt":"Geo-endereço. Representação geográfica do endereço, como ponto.","synonymous_pt":["geo-endereço","ponto de endereço","endereço georreferenciado","ponto de endereçamento postal"]}'::jsonb),
   (21,'geoaddress_full',    'point', false, 'Geo-address point with all attributes, via_name and number.', NULL),
   (22,'geoaddress_ext',     'point', true,  'Geo-address point with no (or some) metadata, external metadata at address_cmpl or address_full.', NULL),
@@ -190,7 +198,7 @@ INSERT INTO ingest.feature_type VALUES
 
   (40,'genericvia',           'class', null,  'Generic-via line. Complementar parcel and block divider: railroad, waterway or other.', '{"shortname_pt":"eixo de etc-via","description_pt":"Via complementar generalizada. Qualquer linha divisora de lotes e quadras: rios, ferrovias, etc. Permite gerar a quadra generalizada.","synonymous_pt":["hidrovia","ferrovia","limite de município"]}'::jsonb),
   (41,'genericvia_full',       'line', false, 'Generic-via line, with all metadata (type, official name, optional code and others)', NULL),
-  (42,'genericvia_ext',        'line', true,  'Generic-via line, with external metadata', NULL),
+  (42,'genericvia_ext',        'line', true,  'Generic-via line, with external metadata at cadgenericvia_cmpl', NULL),
   (43,'genericvia_none',       'line', false, 'Generic-via line with no metadata', NULL),
 
   (50,'building',        'class', null, 'Building polygon.', '{"shortname_pt":"construção","description_pt":"Polígono de edificação.","synonymous_pt":["construções","construção"]}'::jsonb),
@@ -206,6 +214,8 @@ INSERT INTO ingest.feature_type VALUES
   (70,'nsvia',        'class', null, 'Namespace of vias, a name delimited by a polygon.', '{"shortname_pt":"bairro","description_pt":"Espaço-de-nomes para vias, um nome delimitado por polígono. Tipicamente nome de bairro ou de loteamento. Complementa o nome de via em nomes duplicados (repetidos dentro do mesmo município mas não dentro do mesmo nsvia).","synonymous_pt":["bairro","loteamento"]}'::jsonb),
   (71,'nsvia_full',   'poly', false, 'Namespace of vias polygon with name and optional metadata', NULL),
   (72,'nsvia_ext',    'poly', true,  'Namespace of vias polygon with external metadata', NULL),
+  (73,'nsvia_none',   'poly', true,  'Namespace of vias polygon-only, no metadata', NULL),
+  -- renomear para 'namedArea'
 
   (80,'block',        'class', null, 'Urban block and similar structures, delimited by a polygon.', '{"shortname_pt":"quadra","description_pt":"Quadras ou divisões poligonais similares.","synonymous_pt":["quadra"]}'::jsonb),
   (81,'block_full',   'poly', false, 'Urban block with IDs and all other jurisdiction needs', NULL),
@@ -233,7 +243,7 @@ CREATE TABLE ingest.layer_file (
 
 /* LIXO
 CREATE TABLE ingest.feature_asis_report (
-  file_id int NOT NULL REFERENCES ingest.layer_file(file_id),
+  file_id int NOT NULL REFERENCES ingest.layer_file(file_id) ON DELETE CASCADE,
   feature_id int NOT NULL,
   info jsonb,
   UNIQUE(file_id,feature_id)
@@ -241,20 +251,27 @@ CREATE TABLE ingest.feature_asis_report (
 */
 
 CREATE TABLE ingest.tmp_geojson_feature (
-  file_id int NOT NULL REFERENCES ingest.layer_file(file_id),
+  file_id int NOT NULL REFERENCES ingest.layer_file(file_id) ON DELETE CASCADE,
   feature_id int,
   feature_type text,
   properties jsonb,
   jgeom jsonb,
   UNIQUE(file_id,feature_id)
-);
+); -- to be feature_asis after GeoJSON ingestion.
 
 CREATE TABLE ingest.feature_asis (
-  file_id int NOT NULL REFERENCES ingest.layer_file(file_id),
+  file_id int NOT NULL REFERENCES ingest.layer_file(file_id) ON DELETE CASCADE,
   feature_id int NOT NULL,
   properties jsonb,
-  geom geometry,
+  geom geometry NOT NULL CHECK ( st_srid(geom)=4326 ),
   UNIQUE(file_id,feature_id)
+);
+
+CREATE TABLE ingest.cadastral_asis (
+  file_id int NOT NULL REFERENCES ingest.layer_file(file_id) ON DELETE CASCADE,
+  cad_id int NOT NULL,
+  properties jsonb NOT NULL,
+  UNIQUE(file_id,cad_id)
 );
 
 -- -- -- --
@@ -371,7 +388,7 @@ CREATE or replace FUNCTION ingest.feature_asis_assign_volume(
       FROM (
         SELECT gtype, n, CASE gtype
             WHEN 'poly'  THEN round( ST_Area(geom,true)/1000000.0)::int
-            WHEN 'line'  THEN round( ST_Length(geom,true)/1000.0)::int
+            WHEN 'line'  THEN round( ST_Length(geom,true)/1000.0)
             ELSE  null::int
           END size,
           round( ST_Area(ST_OrientedEnvelope(geom),true)/1000000, 1)::int AS bbox_km2,
@@ -396,7 +413,7 @@ CREATE or replace FUNCTION ingest.feature_asis_assign(
   SELECT ingest.feature_asis_assign_volume(p_file_id,true)
     || jsonb_build_object(
         'distribution',
-        geohash_distribution_summary( ingest.feature_asis_geohashes(p_file_id,ghs_size), ghs_size, 10, 0.7)
+        hcode_distribution_reduce(ingest.feature_asis_geohashes(p_file_id,ghs_size), 2, 1, 500, 5000, 2)
     )
   FROM (
     SELECT CASE WHEN (ingest.layer_file_geomtype(p_file_id))[1]='poly' THEN 5 ELSE 6 END AS ghs_size
@@ -620,6 +637,7 @@ CREATE or replace FUNCTION ingest.any_load(
   DECLARE
     q_file_id integer;
     q_query text;
+    q_query_cad text;
     feature_id_col text;
     use_tabcols boolean;
     msg_ret text;
@@ -629,7 +647,7 @@ CREATE or replace FUNCTION ingest.any_load(
     p_fileref := p_fileref || '.csv';
     -- other checks
   ELSE
-    p_fileref := p_fileref || '.shp';
+    p_fileref := regexp_replace(p_fileref,'\.shp$', '') || '.shp';
   END IF;
   q_file_id := ingest.getmeta_to_file(p_fileref,p_ftname,p_pck_id,p_pck_fileref_sha256); -- not null when proc_step=1. Ideal retornar array.
   IF q_file_id IS NULL THEN
@@ -687,7 +705,37 @@ CREATE or replace FUNCTION ingest.any_load(
     p_tabname,
     iIF( use_tabcols, ', LATERAL (SELECT '|| array_to_string(p_tabcols,',') ||') subq',  ''::text )
   );
-  EXECUTE q_query INTO num_items;
+  q_query_cad := format(
+      $$
+      WITH
+      scan AS (
+        SELECT %s, gid, properties
+        FROM (
+            SELECT %s,  -- feature_id_col
+                 %s as properties
+            FROM %s %s
+          ) t
+      ),
+      ins AS (
+        INSERT INTO ingest.cadastral_asis
+           SELECT *
+           FROM scan WHERE properties IS NOT NULL
+        RETURNING 1
+      )
+      SELECT COUNT(*) FROM ins
+    $$,
+    q_file_id,
+    feature_id_col,
+    iIF( use_tabcols, 'to_jsonb(subq)'::text, E'\'{}\'::jsonb' ), -- properties
+    p_tabname,
+    iIF( use_tabcols, ', LATERAL (SELECT '|| array_to_string(p_tabcols,',') ||') subq',  ''::text )
+  );
+
+  IF (SELECT ftid::int FROM ingest.feature_type WHERE ftname=lower(p_ftname))<20 THEN -- feature_type id
+    EXECUTE q_query_cad INTO num_items;
+  ELSE
+    EXECUTE q_query INTO num_items;
+  END IF;
   msg_ret := format(
     E'From file_id=%s inserted type=%s\nin feature_asis %s items.',
     q_file_id, p_ftname, num_items
@@ -795,3 +843,118 @@ $f$ LANGUAGE SQL;
 -- ingest.layer_file tem muitos ingest.file_layer(ftype!)  que tem suas geometrias em ingest.layer_geom
 
 -- SELECT ingest.geom_asis_filemeta('/tmp/bigbigfile.zip');
+
+CREATE or replace FUNCTION ingest.join(
+    p_ftname_layer text,
+    p_join_col_layer text,
+    p_fileref_layer_sha256 text,
+    p_ftname_cad text,
+    p_join_col_cad text,
+    p_fileref_cad_sha256 text
+) RETURNS text AS $f$
+  DECLARE
+    q_query text;
+    msg_ret text;
+    num_items bigint;
+  BEGIN
+  q_query := format(
+      $$
+      WITH
+      cadis AS 
+      (
+        SELECT *
+        FROM ingest.cadastral_asis 
+        WHERE file_id IN 
+            (
+            SELECT file_id 
+            FROM ingest.layer_file 
+            WHERE ftid IN 
+                (
+                SELECT ftid::int 
+                FROM ingest.feature_type 
+                WHERE ftname=lower('%s')
+                ) 
+                AND pck_fileref_sha256 = '%s'
+            )
+      ),
+      duplicate_keys AS (
+        SELECT asis.properties->'%s'
+        FROM
+        (    
+            SELECT  *
+            FROM ingest.feature_asis 
+            WHERE file_id IN 
+            (
+                SELECT file_id 
+                FROM ingest.layer_file 
+                WHERE ftid IN 
+                    (
+                    SELECT ftid::int 
+                    FROM ingest.feature_type 
+                    WHERE ftname=lower('%s')
+                    ) 
+                    AND pck_fileref_sha256 = '%s'
+            )
+        ) AS asis
+
+        INNER JOIN
+
+        cadis
+            
+        ON asis.properties->'%s' = cadis.properties->'%s'
+
+        GROUP BY asis.properties->'%s'
+        
+        HAVING COUNT(*)>1
+      ),
+      layer_features AS (
+      UPDATE ingest.feature_asis l
+      SET properties =  l.properties || c.properties-'%s'
+      FROM cadis AS c
+      WHERE l.properties->'%s' = c.properties->'%s' 
+            AND l.file_id IN 
+            (
+            SELECT file_id 
+            FROM ingest.layer_file 
+            WHERE ftid IN 
+                (
+                SELECT ftid::int 
+                FROM ingest.feature_type 
+                WHERE ftname=lower('%s')
+                ) 
+                AND pck_fileref_sha256 = '%s' 
+            )
+            AND l.properties->'%s' NOT IN (  SELECT * FROM duplicate_keys  )
+            RETURNING 1
+            )
+      SELECT COUNT(*) FROM layer_features
+    $$,
+    p_ftname_cad,
+    p_fileref_cad_sha256,
+    p_join_col_layer,
+    p_ftname_layer,
+    p_fileref_layer_sha256,
+    p_join_col_layer,
+    p_join_col_cad,
+    p_join_col_layer,
+    p_join_col_cad,
+    p_join_col_layer,
+    p_join_col_cad,
+    p_ftname_layer,
+    p_fileref_layer_sha256,
+    p_join_col_layer
+  );
+
+  EXECUTE q_query INTO num_items;
+  
+  msg_ret := format(
+    E'Join %s items.',
+    num_items
+  );
+  
+  RETURN msg_ret;
+  END;
+$f$ LANGUAGE PLpgSQL;
+COMMENT ON FUNCTION ingest.join(text,text,text,text,text,text)
+  IS 'Join layer and cadlayer.'
+;
