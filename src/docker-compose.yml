@@ -34,6 +34,18 @@ services:
       - RACK_ENV=production
       - PGRST_DB_URI=postgres://postgres@localhost/dl10s_osmcod
       - PGRST_DB_ANON_ROLE=postgres
-      - PGRST_DB_SCHEMA=api
+      - PGRST_DB_SCHEMA=public
       - PGRST_SERVER_PORT=3110
+  co_ba:
+    image: postgrest/postgrest:latest
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    network_mode: host
+    environment:
+      - RACK_ENV=production
+      - PGRST_DB_URI=postgres://postgres@localhost/co_ba
+      - PGRST_DB_ANON_ROLE=postgres
+      - PGRST_DB_SCHEMA=public
+      - PGRST_SERVER_PORT=3001
 
