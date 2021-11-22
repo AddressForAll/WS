@@ -363,8 +363,11 @@ SELECT optim.fdw_wgets_script('/tmp/pg_io/run_wgets.sh');
 -- por fim rodar inserts no STEP2
 */
 
-CREATE TABLE optim.redirects(
-   fhash text          NOT NULL PRIMARY KEY, -- sha256
-   furi  text          NOT NULL -- uri
-   ,UNIQUE(fhash,furi)
+CREATE TABLE optim.redirects (
+    donor_id          text,
+    filename_original text,
+    package_path      text,
+    fhash             text NOT NULL PRIMARY KEY, -- de_sha256
+    furi              text NOT NULL,             -- para_url
+    UNIQUE (fhash, furi)
 );
