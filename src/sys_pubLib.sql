@@ -231,7 +231,7 @@ COMMENT ON FUNCTION file_get_contents
 CREATE OR REPLACE FUNCTION st_read_geojson(
   p_path text,
   p_ext text DEFAULT '.geojson',
-  p_basepath text DEFAULT '/opt/gits/city-codes/data/dump_osm/'::text,
+  p_basepath text DEFAULT '/var/gits/city-codes/data/dump_osm/'::text,
   p_srid int DEFAULT 4326
 ) RETURNS geometry AS $f$
   SELECT CASE WHEN length(s)<30 THEN NULL ELSE ST_GeomFromGeoJSON_sanitized(s::jsonb) END

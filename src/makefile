@@ -4,9 +4,9 @@
 
 ## -- -- VARS -- --
 
-gits_basepath = /opt/gits/_a4a
+gits_basepath = /var/gits/_a4a
 opt_lock =/opt/lock-mkStatus
-gits     =/opt/gits
+gits     =/var/gits
 pg_io    =/tmp/pg_io
 pg_uri   =postgres://postgres@localhost
 iniExts  ="CREATE EXTENSION IF NOT EXISTS hstore; CREATE EXTENSION IF NOT EXISTS postgis;"
@@ -152,7 +152,7 @@ dkr_refresh_dl03: $(gits)/WS/src/docker-compose.yml
 	docker-compose -f $(gits)/WS/src/docker-compose.yml kill -s SIGUSR1 pgrestDL03
 
 dkr_refresh_dl04: $(gits)/WS/src/docker-compose.yml
-	docker-compose -f /opt/gits/WS/src/docker-compose.yml kill -s SIGUSR1 pgrestDL04
+	docker-compose -f /var/gits/WS/src/docker-compose.yml kill -s SIGUSR1 pgrestDL04
 
 ## clean all? or by prefix ini_clean, etc.?
 clean:

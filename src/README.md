@@ -52,7 +52,7 @@ Para debug do que está rodando:
 
 Um comando de uso frequente para caso de reestruturacao de tabelas e funcoes, usar direto `make dkr_refresh` ou:
 ```sh
-sudo make -C /opt/gits/WS/src dkr_refresh
+sudo make -C /var/gits/WS/src dkr_refresh
 ```
 ## permissoes online no WS
 
