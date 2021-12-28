@@ -309,7 +309,7 @@ SELECT ingest.fdw_generate(
     'url text'
   ],
   '/tmp/pg_io/digital-preservation-XX'
-);
+); -- creates tmp_orig.fdw_donor_br
 
 -----
 
