@@ -287,7 +287,7 @@ $f$ language SQL immutable;
 -- Pre-insert (generating FDWs)
 
 \echo E'\n --- FDW para ingestão de dados do git ---'
-SELECT ingest.fdw_generate_getclone('jurisdiction', 'br', 'optim', null,null, '/tmp/pg_io/digital-preservation-XX'); -- creates tmp_orig.s
+SELECT ingest.fdw_generate_getclone('jurisdiction', 'br', 'optim', null,null, '/tmp/pg_io/digital-preservation-XX'); -- creates tmp_orig.fdw_jurisdiction_br
 
 SELECT ingest.fdw_generate(
   'donatedPack',  'br', 'optim',
