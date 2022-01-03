@@ -48,4 +48,15 @@ services:
       - PGRST_DB_ANON_ROLE=postgres
       - PGRST_DB_SCHEMA=public
       - PGRST_SERVER_PORT=3001
-
+  pgrestDL02:
+    image: postgrest/postgrest:latest
+    restart: unless-stopped
+    ports:
+      - "3102:3102"
+    network_mode: host
+    environment:
+      - RACK_ENV=production
+      - PGRST_DB_URI=postgres://postgres@localhost/dl02s_main
+      - PGRST_DB_ANON_ROLE=postgres
+      - PGRST_DB_SCHEMA=public
+      - PGRST_SERVER_PORT=3102
