@@ -60,3 +60,15 @@ services:
       - PGRST_DB_ANON_ROLE=postgres
       - PGRST_DB_SCHEMA=api
       - PGRST_SERVER_PORT=3102
+  pgrestDL20:
+    image: postgrest/postgrest:latest
+    restart: unless-stopped
+    ports:
+      - "3120:3120"
+    network_mode: host
+    environment:
+      - RACK_ENV=production
+      - PGRST_DB_URI=postgres://postgres@localhost/dl20t_osmcodco
+      - PGRST_DB_ANON_ROLE=postgres
+      - PGRST_DB_SCHEMA=api
+      - PGRST_SERVER_PORT=3120
