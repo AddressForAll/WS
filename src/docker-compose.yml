@@ -3,8 +3,8 @@ services:
   pgrestDL03:
     image: postgrest/postgrest:latest
     restart: unless-stopped
-    ports:
-      - "3103:3103"
+    #ports:
+    #  - "3103:3103"
     network_mode: host
     environment:
       - RACK_ENV=development
@@ -15,8 +15,8 @@ services:
   pgrestDL04:
     image: postgrest/postgrest:latest
     restart: unless-stopped
-    ports:
-      - "3104:3104"
+    #ports:
+    #  - "3104:3104"
     network_mode: host
     environment:
       - RACK_ENV=production
@@ -27,8 +27,8 @@ services:
   pgrestDL10:
     image: postgrest/postgrest:latest
     restart: unless-stopped
-    ports:
-      - "3110:3110"
+    #ports:
+    #  - "3110:3110"
     network_mode: host
     environment:
       - RACK_ENV=production
@@ -39,8 +39,8 @@ services:
   co_ba:
     image: postgrest/postgrest:latest
     restart: unless-stopped
-    ports:
-      - "3001:3001"
+    #ports:
+    #  - "3001:3001"
     network_mode: host
     environment:
       - RACK_ENV=production
@@ -51,8 +51,8 @@ services:
   pgrestDL02:
     image: postgrest/postgrest:latest
     restart: unless-stopped
-    ports:
-      - "3102:3102"
+    #ports:
+    #  - "3102:3102"
     network_mode: host
     environment:
       - RACK_ENV=production
@@ -63,12 +63,12 @@ services:
   pgrestDL20:
     image: postgrest/postgrest:latest
     restart: unless-stopped
-    ports:
-      - "3120:3120"
+    #ports:
+    #  - "3120:3120"
     network_mode: host
     environment:
       - RACK_ENV=production
       - PGRST_DB_URI=postgres://postgres@localhost/dl20t_osmcodco
       - PGRST_DB_ANON_ROLE=postgres
-      - PGRST_DB_SCHEMA=api
+      - PGRST_DB_SCHEMA=libgrid_co
       - PGRST_SERVER_PORT=3120
