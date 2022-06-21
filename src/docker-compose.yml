@@ -68,7 +68,7 @@ services:
     network_mode: host
     environment:
       - RACK_ENV=production
-      - PGRST_DB_URI=postgres://postgres@localhost/dl20t_osmcodco
+      - PGRST_DB_URI=postgres://postgres@localhost/dl20t_osmcodes
       - PGRST_DB_ANON_ROLE=postgres
       - PGRST_DB_SCHEMA=libgrid_co
       - PGRST_SERVER_PORT=3120
