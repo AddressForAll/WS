@@ -1,27 +1,79 @@
 ##
-# Portal and Web Services AddressForAll
+# Servidores ADDRESSFORALL.ORG
 ##
 
+server {
+    listen              80;
+    listen              443 ssl;
+    include /etc/nginx/ssl.conf;
+    server_name docs.addressforall.org;
+    root /var/www/docs.addressforall.org/;
+    index  index.php index.html index.htm;
+    access_log /var/log/nginx/docs.addressforall.org.access_log;
+
+    # PAGES:
+    location / {
+      try_files $uri $uri/  /index.php?uri=$uri;
+    }
+    location ~ \.php$ {
+          include snippets/fastcgi-php.conf;
+          fastcgi_pass unix:/run/php/php-fpm.sock;
+    }
+} # \server
 
 server {
+	listen              80;
+        listen              443 ssl;
+        include /etc/nginx/ssl.conf;
+        server_name tv.addressforall.org;
+        location ~ ^/?.+ {
+                rewrite
+                  ^/?$
+                  /channel/UCzZ_RhIko15LtHepwU5d7aQ
+                  break;
+                rewrite
+                  ^/?(.+)$
+                  /watch?v=$1
+                  break;
+                proxy_pass http://www.youtube.com;
+        }
+} # \server
+
+server {
+	listen              80;
+        listen              443 ssl;
+        include /etc/nginx/ssl.conf;
         server_name preserv.addressforall.org;
         root /var/www/preserv.addressforall.org/;
         index  index.php index.html index.htm;
         access_log /var/log/nginx/addressforall.org.access_log;
+
+    # JSON SQL & RPC:
+    location /_sql.csv/ {
+      proxy_set_header Accept 'text/csv';
+      proxy_pass http://localhost:3102/;
+    }
+    location /_sql.json/ {
+      proxy_pass http://localhost:3102/;
+    }
+    location /_sql/ {
+      proxy_pass http://localhost:3102/;
+    }
 
     location / {
       try_files $uri $uri/  /index.php?uri=$uri;
     }
     location ~ \.php$ {
           include snippets/fastcgi-php.conf;
-          fastcgi_pass unix:/run/php/php7.4-fpm.sock;
+          fastcgi_pass unix:/run/php/php-fpm.sock;
     }
 } # \server
 
-
 server {
+	listen              80;
+        listen              443 ssl;
+        include /etc/nginx/ssl.conf;
         server_name git.addressforall.org;
-
         location ~ ^/?.+ {
                 rewrite
                   ^/?licenses(/.*$|$)
@@ -31,14 +83,15 @@ server {
                   ^/?(.*)$
                   /AddressForAll/$1
                   break;
-
                 proxy_pass http://github.com;
         }
-} #end server
+} # \server
 
 server {
+	listen              80;
+        listen              443 ssl;
+        include /etc/nginx/ssl.conf;
         server_name git-raw.addressforall.org;
-
         location ~ ^/?.+ {
                 rewrite
                   ^/?licenses(/.*$|$)
@@ -50,14 +103,15 @@ server {
                   break;
                 proxy_pass https://raw.githubusercontent.com;
         }
-} #end server
+} # \server
 
-
-# API!
-
-server { # API-STABLE
+# API! https
+server {
+    listen              80;
+    listen              443 ssl;
+    include /etc/nginx/ssl.conf;
     server_name api.addressforall.org;
-    access_log /var/log/nginx/addressforall.org.access_log;
+    access_log /var/log/nginx/https_api.addressforall.org.access_log;
     root /var/www/addressforall.org/;
     index  index.php index.html index.htm;
 
@@ -74,6 +128,15 @@ server { # API-STABLE
     }
 
     # API /v1{formatoSaida}/{modulo}/{funcao}/{parametros}
+
+    # testes Colombia, Batista. Requerem CO-etc.
+    location ~ /test/(search|reverse|lookup|doc|help) {
+      proxy_pass http://localhost:3001/rpc/$1?$args;
+    }
+    location /test/_sql/ {
+      proxy_pass http://localhost:3001/;
+    }
+
 
     location ~ /v1(?:\.json)?/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)/(.+) {
       proxy_pass http://localhost:3104/rpc/uridisp_$1_$2?p_uri=$3&$args;
@@ -82,9 +145,17 @@ server { # API-STABLE
       proxy_set_header Accept 'text/csv';
       proxy_pass http://localhost:3104/rpc/uridisp_$1_$2?p_uri=$3&$args;
     }
+
+    location ~ \.php$ {
+          include snippets/fastcgi-php.conf;
+          fastcgi_pass unix:/run/php/php-fpm.sock;
+    }
 } # \server
 
-server { # API-TEST
+server {
+    listen              80;
+    listen              443 ssl;
+    include /etc/nginx/ssl.conf;
     server_name api-test.addressforall.org;
     access_log /var/log/nginx/addressforall.org.access_log;
     root /var/www/addressforall.org/;
@@ -92,29 +163,29 @@ server { # API-TEST
 
     # ROOT, somente json:
     location = / {
-      proxy_pass http://localhost:3103/rpc/apiroot;
+      proxy_pass http://localhost:3102/rpc/apiroot;
     }
 
     # JSON SQL & RPC:
     location /_sql.csv/ {
       proxy_set_header Accept 'text/csv';
-      proxy_pass http://localhost:3103/;
+      proxy_pass http://localhost:3102/;
     }
     location /_sql.json/ {
-      proxy_pass http://localhost:3103/;
+      proxy_pass http://localhost:3102/;
     }
     location /_sql/ {
-      proxy_pass http://localhost:3103/;
+      proxy_pass http://localhost:3102/;
     }
 
     # API /v1{formatoSaida}/{modulo}/{funcao}/{parametros}
 
     location ~ /v1(?:\.json)?/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)(?:/(.*)|) {
-      proxy_pass http://localhost:3103/rpc/uridisp_$1_$2?p_uri=$3&$args;
+      proxy_pass http://localhost:3102/rpc/uridisp_$1_$2?p_uri=$3&$args;
     }
     location ~ /v1\.csv/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)(?:/(.*)|) {
       proxy_set_header Accept 'text/csv';
-      proxy_pass http://localhost:3103/rpc/uridisp_$1_$2?p_uri=$3&$args;
+      proxy_pass http://localhost:3102/rpc/uridisp_$1_$2?p_uri=$3&$args;
     }
     location  ^~ /v1.htm {
       rewrite ^/?v1\.html?/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)/(.+)$ /index.php?api_p1=$1&api_p2=$2&api_uri=$3&$args break;
@@ -122,11 +193,14 @@ server { # API-TEST
       rewrite ^/?v1\.html?/?(.*)$ /index.php?api_p1=$1&$args break;
 
       include snippets/fastcgi-php.conf;
-      fastcgi_pass unix:/run/php/php7.4-fpm.sock;
+      fastcgi_pass unix:/run/php/php-fpm.sock;
     }
 } # \server
 
 server {
+	listen              80;
+        listen              443 ssl;
+        include /etc/nginx/ssl.conf;
         server_name api-htm.addressforall.org;
         access_log /var/log/nginx/addressforall.org.access_log;
         root /var/www/addressforall.org/;
@@ -138,29 +212,20 @@ server {
 
     location ~ \.php$ {
           include snippets/fastcgi-php.conf;
-          fastcgi_pass unix:/run/php/php7.4-fpm.sock;
+          fastcgi_pass unix:/run/php/php-fpm.sock;
     }
+
 } # \server
 
-# ------------------------
 
 server {
-        server_name addressforall.org addressforall.com www.addressforall.org;
+        listen              80;
+        listen              443 ssl;
+        include /etc/nginx/ssl.conf;
+        server_name local.addressforall.org;
         access_log /var/log/nginx/addressforall.org.access_log;
-        root /var/www/addressforall.org/;
+        root /var/www/local.addressforall.org/;
         index  index.php index.html index.htm;
-
-    # JSON SQL & RPC:
-    location /_sql.csv/ {
-      proxy_set_header Accept 'text/csv';
-      proxy_pass http://localhost:3104/;
-    }
-    location /_sql.json/ {
-      proxy_pass http://localhost:3104/;
-    }
-    location /_sql/ {
-      proxy_pass http://localhost:3104/;
-    }
 
     location / {
       try_files $uri $uri/  /index.php?uri=$uri;
@@ -168,6 +233,153 @@ server {
 
     location ~ \.php$ {
           include snippets/fastcgi-php.conf;
-          fastcgi_pass unix:/run/php/php7.4-fpm.sock;
+          fastcgi_pass unix:/run/php/php-fpm.sock;
     }
-} #end server
+
+} # \server
+
+server {
+     listen              80;
+     listen              443 ssl;
+     include /etc/nginx/ssl.conf;
+     server_name wiki.addressforall.org;
+     access_log /var/log/nginx/wiki.addressforall.org.https.access_log;
+     #root /var/www/addressforall.org/;
+     root /var/www/addressforall.org/mediawiki/;
+     index  index.php index.html index.htm;
+
+     client_body_timeout 60;
+
+    #Segurança - https://observatory.mozilla.org/analyze/addressforall.org
+    #https://content-security-policy.com/
+    #add_header Content-Security-Policy "default-src 'none'; script-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; base-uri 'self'; form-action 'self'; frame-src 'self' www.youtube.com;" always;
+
+    location / {
+      try_files $uri $uri/ $uri/index.php /index.php?uri=$uri;
+    }
+
+    location ~ \.php$ {
+      include snippets/fastcgi-php.conf;
+      fastcgi_pass unix:/run/php/php-fpm.sock;
+      subs_filter_types text/css text/javascript ;
+    }
+} # \server
+
+server {
+     listen              80;
+     listen              443 ssl;
+     include /etc/nginx/ssl.conf;
+     server_name addressforall.org addressforall.com www.addressforall.org;
+     access_log /var/log/nginx/addressforall.org.https.access_log;
+     #root /var/www/addressforall.org/;
+     root /var/www/addressforall.org/site-v2/out/;
+     index  index.php index.html index.htm;
+
+    #Segurança - https://observatory.mozilla.org/analyze/addressforall.org
+    #https://content-security-policy.com/
+    #add_header Content-Security-Policy "default-src 'none'; script-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; base-uri 'self'; form-action 'self'; frame-src 'self' www.youtube.com;" always;
+
+     #regras de rewrite para estatuto - 20230111 - Carlos
+     rewrite "^/urn:lex::estatuto:2020-04-03$" "/_private/A4A-Estatuto2020-04-03.htm";
+     rewrite "^/urn:lex::estatuto:2020-04-03~pdf.assign$" "/_private/A4A-Estatuto2020-04-03.assign.pdf";
+     rewrite "^/urn:lex::colecao:2020-04-03;v7$" "/_private/A4A-colecao2020-04-v7.htm";
+     rewrite "^/urn:lex::colecao:2020-04-03;v7.reg~pdf.assign$" "/_private/A4A-colecao2020-04-v7_reg~assign.pdf";
+
+    # JSON SQL & RPC:
+    location /_sql.csv/ {
+      proxy_set_header Accept 'text/csv';
+      proxy_pass http://localhost:3101/;
+    }
+    location /_sql.json/ {
+      proxy_pass http://localhost:3101/;
+    }
+    location /_sql/ {
+      proxy_pass http://localhost:3101/;
+    }
+
+    location / {
+      try_files $uri $uri/  /index.php?uri=$uri;
+      subs_filter_types text/css text/javascript ;
+      subs_filter 'http://addressforall.org' 'https://addressforall.org';
+    }
+
+    location ~ \.php$ {
+      include snippets/fastcgi-php.conf;
+      fastcgi_pass unix:/run/php/php-fpm.sock;
+      subs_filter_types text/css text/javascript ;
+      subs_filter 'http://addressforall.org' 'https://addressforall.org';
+      fastcgi_param HTTP_ACCEPT_ENCODING "";
+    }
+    location /_foundations {
+      alias /var/www/addressforall.org/_foundations;
+    }
+    location /_private {
+      alias /var/www/addressforall.org/_private;
+    }
+    location /teste2 {
+      alias /var/www/addressforall.org/teste2;
+    }
+    # include snippets/ssl-oficial.news.conf;
+} # \server
+
+server {
+        listen              80;
+        listen              443 ssl;
+        server_name teste.addressforall.org;
+        access_log /var/log/nginx/teste.addressforall.org.access_log;
+	root /var/www/teste/site-v2/out;
+        index index.php index.html index.htm;
+
+    location / {
+      #try_files $uri $uri/  /index.php?uri=$uri;
+      try_files $uri $uri/ $uri/index.php /index.php?uri=$uri;
+      #proxy_pass http://localhost:3000/;
+    }
+    location ~ \.php$ {
+      include snippets/fastcgi-php.conf;
+      fastcgi_pass unix:/run/php/php-fpm.sock;
+      subs_filter_types text/css text/javascript ;
+      subs_filter 'http://addressforall.org' 'https://addressforall.org';
+      fastcgi_param HTTP_ACCEPT_ENCODING "";
+    }
+} # \server
+
+server {
+        listen              80;
+        listen              443 ssl;
+        server_name teste2.addressforall.org;
+        access_log /var/log/nginx/teste2.addressforall.org.access_log;
+        #root /var/www/teste2/;
+        #index index.html index.htm;
+        #root /var/www/teste2.addressforall.org.br/site-v2/build/;
+        root /var/www/teste2.addressforall.org.br/site-v2/out/;
+        index index.html index.htm;
+
+    location / {
+      #try_files $uri $uri/  /index.php?uri=$uri;
+      #proxy_pass http://localhost:2022/;
+    }
+} # \server
+
+
+server {
+	listen              80;
+        listen              443 ssl;
+        include /etc/nginx/ssl.conf;
+        server_name osms.addressforall.org;
+        location / {
+                rewrite
+                  ^/?$
+                  http://addressforall.org/osms
+                  break;
+                rewrite
+                  ^/?(\d+)$
+                  http://addressforall.org/t/$1
+                  break;
+                rewrite
+                  ^/?tags/(.+)$
+                  http://addressforall.org/tags/$1
+                  break;
+        }
+        # include snippets/ssl-oficial.news.conf;
+} # \server
