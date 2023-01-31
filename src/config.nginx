@@ -146,6 +146,11 @@ server {
       proxy_pass http://localhost:3104/rpc/uridisp_$1_$2?p_uri=$3&$args;
     }
 
+    ## return download_list json
+    location /download_list {
+      proxy_pass http://127.0.0.1:3103/rpc/download_list;
+    }
+
     location ~ \.php$ {
           include snippets/fastcgi-php.conf;
           fastcgi_pass unix:/run/php/php-fpm.sock;
