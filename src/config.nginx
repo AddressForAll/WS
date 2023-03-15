@@ -243,7 +243,10 @@ server {
 
 } # \server
 
+#referencia 25/02/2023
+#https://www.mediawiki.org/wiki/Manual:Short_URL/Nginx
 server {
+
      listen              80;
      listen              443 ssl;
      include /etc/nginx/ssl.conf;
@@ -259,14 +262,47 @@ server {
     #https://content-security-policy.com/
     #add_header Content-Security-Policy "default-src 'none'; script-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; base-uri 'self'; form-action 'self'; frame-src 'self' www.youtube.com;" always;
 
-    location / {
-      try_files $uri $uri/ $uri/index.php /index.php?uri=$uri;
-    }
 
-    location ~ \.php$ {
+    location ~ ^/w/(index|load|api|thumb|opensearch_desc|rest|img_auth)\.php$ {
       include snippets/fastcgi-php.conf;
       fastcgi_pass unix:/run/php/php-fpm.sock;
-      subs_filter_types text/css text/javascript ;
+    }
+    location /w/images {
+    }
+    location /w/images/deleted {
+	    deny all;
+    }
+    location ~ ^/w/resources/(assets|lib|src) {
+	    try_files $uri 404;
+	    add_header Cache-Control "public";
+	    expires 7d;
+    }
+    location ~ ^/w/(skins|extensions)/.+\.(css|js|gif|jpg|jpeg|png|svg|wasm|ttf|woff|woff2)$ {
+	    try_files $uri 404;
+	    add_header Cache-Control "public";
+	    expires 7d;
+    }
+    location = /favicon.ico {
+	    alias /w/images/6/64/Favicon.ico;
+	    add_header Cache-Control "public";
+	    expires 7d;
+    }
+    location ~ ^/w/(COPYING|CREDITS)$ {
+	    default_type text/plain;
+    }
+    location /w/rest.php/ {
+	    try_files $uri $uri/ /w/rest.php?$query_string;
+    }
+    location /doc/ {
+	    rewrite ^/doc/(?<pagename>.*)$ /w/index.php;
+    }
+    location = /robots.txt {
+    }
+    location = / {
+	    return 301 /doc/Página_principal;
+    }
+    location / {
+	    return 404;
     }
 } # \server
 
