@@ -10,13 +10,11 @@ server {
     root /var/www/viz.addressforall.org/;
     access_log /var/log/nginx/viz.addressforall.org.access_log;
 
-    location ~* "^\/([a-z0-9\-\/]+)$" {
-      proxy_pass http://127.0.0.1:3103/rpc/redirects_viz?p_uri=$1;
+    location ~* "^\/([a-z0-9\-\/\.\_]+)$" {
+        proxy_pass http://127.0.0.1:3103/rpc/redirects_viz?p_uri=$1;
+        #try_files /viz.php?$uri /index.html ;
     }
 
-    #location ~ "^/(?<hash>[a-fA-F0-9]{6,64}(\.[a-z0-9]+)?)$" {
-    #    try_files /viz.php?$uri /viz.php;
-    #}
 } # \server
 
 server {
