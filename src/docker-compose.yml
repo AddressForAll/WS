@@ -1,5 +1,17 @@
 version: "3"
+volumes:
+  data:
+    driver: local
 services:
+  pg09:
+    #image: jonixis/postgres-madlib:latest
+    image: madlib-a4a
+    container_name: postgres-madlib
+    ports:
+      - "5439:5432"
+    restart: unless-stopped
+    volumes:
+      - data:/var/lib/postgresql/data
   pgrestDL03:
     image: postgrest/postgrest:latest
     restart: unless-stopped
