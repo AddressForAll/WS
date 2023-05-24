@@ -3,18 +3,23 @@
 ##
 
 server {
+    server_name viz.addressforall.org;
     listen              80;
     listen              443 ssl;
-    server_name viz.addressforall.org;
     include /etc/nginx/ssl.conf;
     root /var/www/viz.addressforall.org/;
+    index  index.php index.html index.htm;
     access_log /var/log/nginx/viz.addressforall.org.access_log;
 
-    location ~* "^\/([a-z0-9\-\/\.\_]+)$" {
-        proxy_pass http://127.0.0.1:3103/rpc/redirects_viz?p_uri=$1;
-        #try_files /viz.php?$uri /index.html ;
+    #location ~* "^\/([a-z0-9\-\/\.\_]+)$" {
+    location / {
+      try_files $uri $uri/  /viz.php?$uri;
     }
 
+    location ~ \.php$ {
+          include snippets/fastcgi-php.conf;
+          fastcgi_pass unix:/run/php/php-fpm.sock;
+    }
 } # \server
 
 server {
