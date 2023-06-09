@@ -157,7 +157,7 @@ server {
       proxy_pass http://localhost:3001/;
     }
 
-
+   
     location ~ /v1(?:\.json)?/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)/(.+) {
       proxy_pass http://localhost:3104/rpc/uridisp_$1_$2?p_uri=$3&$args;
     }
@@ -277,6 +277,7 @@ server {
      index  index.php index.html index.htm;
 
      client_body_timeout 60;
+     client_max_body_size 100M;
 
     #Segurança - https://observatory.mozilla.org/analyze/addressforall.org
     #https://content-security-policy.com/
@@ -444,3 +445,4 @@ server {
         }
         # include snippets/ssl-oficial.news.conf;
 } # \server
+
