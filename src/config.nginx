@@ -59,6 +59,26 @@ server {
         }
 } # \server
 
+
+server {
+        listen              80;
+        listen              443 ssl;
+        include /etc/nginx/ssl.conf;
+        server_name blog.addressforall.org;
+        location ~ ^/?.+ {
+                rewrite
+                  ^/?$
+                  /@AddressForAll
+                  break;
+                rewrite
+                  ^/?(.+)$
+                  /d/$1
+                  break;
+                proxy_pass http://medium.com;
+        }
+} # \server
+
+
 server {
 	listen              80;
         listen              443 ssl;
@@ -445,4 +465,3 @@ server {
         }
         # include snippets/ssl-oficial.news.conf;
 } # \server
-
