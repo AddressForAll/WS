@@ -12,28 +12,6 @@ services:
     restart: unless-stopped
     volumes:
       - data:/var/lib/postgresql/data
-  co_ba:
-    image: postgrest/postgrest:latest
-    restart: unless-stopped
-    #ports:
-    #  - "3001:3001"
-    network_mode: host
-    environment:
-      - RACK_ENV=production
-      - PGRST_DB_URI=postgres://postgres@localhost/co_ba
-      - PGRST_DB_ANON_ROLE=postgres
-      - PGRST_DB_SCHEMA=public
-      - PGRST_SERVER_PORT=3001
-  pgrestDL02:
-    image: postgrest/postgrest:latest
-    restart: unless-stopped
-    network_mode: host
-    environment:
-      - RACK_ENV=production
-      - PGRST_DB_URI=postgres://postgres@localhost/dl02s_main
-      - PGRST_DB_ANON_ROLE=postgres
-      - PGRST_DB_SCHEMA=api
-      - PGRST_SERVER_PORT=3102
   pgrestDL03:
     image: postgrest/postgrest:latest
     restart: unless-stopped
@@ -44,22 +22,12 @@ services:
       - PGRST_DB_ANON_ROLE=postgres
       - PGRST_DB_SCHEMA=api
       - PGRST_SERVER_PORT=3103
-  pgrestDL04:
-    image: postgrest/postgrest:latest
-    restart: unless-stopped
-    network_mode: host
-    environment:
-      - RACK_ENV=production
-      - PGRST_DB_URI=postgres://postgres@localhost/dl04s_main
-      - PGRST_DB_ANON_ROLE=postgres
-      - PGRST_DB_SCHEMA=api
-      - PGRST_SERVER_PORT=3104
   pgrestDL05:
     image: postgrest/postgrest:latest
     restart: unless-stopped
     network_mode: host
     environment:
-      - RACK_ENV=development
+      - RACK_ENV=production
       - PGRST_DB_URI=postgres://postgres@localhost/dl05s_main
       - PGRST_DB_ANON_ROLE=postgres
       - PGRST_DB_SCHEMA=api
@@ -74,13 +42,3 @@ services:
       - PGRST_DB_ANON_ROLE=postgres
       - PGRST_DB_SCHEMA=api
       - PGRST_SERVER_PORT=3106
-  pgrestDL10:
-    image: postgrest/postgrest:latest
-    restart: unless-stopped
-    network_mode: host
-    environment:
-      - RACK_ENV=production
-      - PGRST_DB_URI=postgres://postgres@localhost/dl10s_osmcod
-      - PGRST_DB_ANON_ROLE=postgres
-      - PGRST_DB_SCHEMA=public
-      - PGRST_SERVER_PORT=3110
