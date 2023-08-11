@@ -27,18 +27,20 @@ server {
     listen              443 ssl;
     include /etc/nginx/ssl.conf;
     server_name docs.addressforall.org;
-    root /var/www/docs.addressforall.org/;
-    index  index.php index.html index.htm;
+    # root /var/www/docs.addressforall.org/;
+    # index  index.php index.html index.htm;
     access_log /var/log/nginx/docs.addressforall.org.access_log;
 
     # PAGES:
-    location / {
-      try_files $uri $uri/  /index.php?uri=$uri;
-    }
-    location ~ \.php$ {
-          include snippets/fastcgi-php.conf;
-          fastcgi_pass unix:/run/php/php-fpm.sock;
-    }
+    # location / {
+    #   try_files $uri $uri/  /index.php?uri=$uri;
+    # }
+    # location ~ \.php$ {
+    #       include snippets/fastcgi-php.conf;
+    #       fastcgi_pass unix:/run/php/php-fpm.sock;
+    # }
+
+    return 301 https://wiki.addressforall.org/doc/Documenta%C3%A7%C3%A3o_AddresForAll;
 } # \server
 
 server {
