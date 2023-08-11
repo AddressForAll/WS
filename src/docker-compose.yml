@@ -12,16 +12,6 @@ services:
     restart: unless-stopped
     volumes:
       - data:/var/lib/postgresql/data
-  pgrestDL03:
-    image: postgrest/postgrest:latest
-    restart: unless-stopped
-    network_mode: host
-    environment:
-      - RACK_ENV=development
-      - PGRST_DB_URI=postgres://postgres@localhost/dl03t_main
-      - PGRST_DB_ANON_ROLE=postgres
-      - PGRST_DB_SCHEMA=api
-      - PGRST_SERVER_PORT=3103
   pgrestDL05:
     image: postgrest/postgrest:latest
     restart: unless-stopped
