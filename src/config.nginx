@@ -179,7 +179,6 @@ server {
       proxy_pass http://localhost:3001/;
     }
 
-   
     location ~ /v1(?:\.json)?/([a-z_][a-z0-9_]*)/([a-z_][a-z0-9_]*)/(.+) {
       proxy_pass http://localhost:3104/rpc/uridisp_$1_$2?p_uri=$3&$args;
     }
@@ -400,8 +399,8 @@ server {
     location /_private {
       alias /var/www/addressforall.org/_private;
     }
-    location /teste2 {
-      alias /var/www/addressforall.org/teste2;
+    location /viz {
+      alias /var/www/addressforall.org/viz;
     }
     # include snippets/ssl-oficial.news.conf;
 } # \server
