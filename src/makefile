@@ -11,13 +11,15 @@ pg_io    =/tmp/pg_io
 pg_uri   =postgres://postgres@localhost
 iniExts  ="CREATE EXTENSION IF NOT EXISTS hstore; CREATE EXTENSION IF NOT EXISTS postgis;"
 
-sites_domains = addressforall.org addressforall.com www.addressforall.org git-raw.addressforall.org api-htm.addressforall.org \
-		osms.addressforall.org api.addressforall.org docs.addressforall.org \
-		git-raw.osm.codes olc.osm.codes osm.codes www.osm.codes \
-		digital-guard.org www.digital-guard.org docs.digital-guard.org \
-		docs.itgs.org.br itgs.org.br www.itgs.org.br
-sites_protocols =  https http
-sites_return_code = 200
+sites_domains = addressforall.com addressforall.org afa.codes blog.addressforall.org dl.digital-guard.org \
+	local.addressforall.org osm.codes preserv.addressforall.org preserv.addressforall.org test.afa.codes \
+	test.osm.codes teste2.addressforall.org wiki.addressforall.org/doc/P%C3%A1gina_principal \
+	www.addressforall.org www.itgs.org.br \
+	blog.addressforall.org docs.addressforall.org docs.digital-guard.org docs.osm.codes git.addressforall.org \
+	git.afa.codes git.digital-guard.org git.osm.codes old.osm.codes osms.addressforall.org tv.addressforall.org \
+	tv.addressforall.org
+sites_protocols =  https 
+sites_return_code = 200|301|302
 
 ## -- -- Functions a revisar -- --
 ## pode ser INCLUDE!
@@ -200,7 +202,8 @@ status_sites:
 	@for site in $(sites_domains); do \
 		for protocol in $(sites_protocols) ; do \
 			res=`curl -o /dev/null -s -w "%{http_code}\n" $$protocol://$$site `; \
-			if [ "$$res" != "$(sites_return_code)" ] ; then \
+			echo $$res echo | egrep -q "$(sites_return_code)" ; \
+			if [ $$? -ne 0 ] ; then \
 				>&2 echo Erro $$res no site $$protocol://$$site; \
 			fi ; \
 		done ; \

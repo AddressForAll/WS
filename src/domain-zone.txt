@@ -1,0 +1,88 @@
+$ORIGIN addressforall.org.
+$TTL 1800
+addressforall.org. 3600 IN A 165.227.5.135
+www.addressforall.org. 3600 IN A 165.227.5.135
+git.addressforall.org. 3600 IN A 165.227.5.135
+docs.addressforall.org. 3600 IN A 165.227.5.135
+osms.addressforall.org. 3600 IN A 165.227.5.135
+api.addressforall.org. 3600 IN A 165.227.5.135
+api-csv.addressforall.org. 3600 IN A 165.227.5.135
+preserv.addressforall.org. 3600 IN A 165.227.5.135
+api-test.addressforall.org. 3600 IN A 165.227.5.135
+git-raw.addressforall.org. 3600 IN A 165.227.5.135
+tv.addressforall.org. 3600 IN A 165.227.5.135
+teste.addressforall.org. 3600 IN A 165.227.5.135
+local.addressforall.org. 3600 IN A 165.227.5.135
+teste2.addressforall.org. 3600 IN A 165.227.5.135
+wiki.addressforall.org. 3600 IN A 165.227.5.135
+viz.addressforall.org. 3600 IN A 165.227.5.135
+blog.addressforall.org. 3600 IN A 165.227.5.135
+git-site.addressforall.org. 3600 IN A 165.227.5.135
+flow.addressforall.org. 3600 IN A 165.227.5.135
+addressforall.org. 1800 IN NS ns1.digitalocean.com.
+addressforall.org. 1800 IN NS ns2.digitalocean.com.
+addressforall.org. 1800 IN NS ns3.digitalocean.com.
+
+$ORIGIN afa.codes.
+$TTL 1800
+afa.codes. 3600 IN A 165.227.5.135
+git.afa.codes. 3600 IN A 165.227.5.135
+api.afa.codes. 3600 IN A 165.227.5.135
+test.afa.codes. 3600 IN A 165.227.5.135
+www.afa.codes. 3600 IN A 165.227.5.135
+docs.afa.codes. 3600 IN A 165.227.5.135
+git-site.afa.codes. 3600 IN A 165.227.5.135
+git-raw.afa.codes. 3600 IN A 165.227.5.135
+afa.codes. 1800 IN NS ns1.digitalocean.com.
+afa.codes. 1800 IN NS ns2.digitalocean.com.
+afa.codes. 1800 IN NS ns3.digitalocean.com.
+
+$ORIGIN digital-guard.org.
+$TTL 1800
+git.digital-guard.org. 3600 IN A 165.227.5.135
+git-raw.digital-guard.org. 3600 IN A 165.227.5.135
+dl.digital-guard.org. 3600 IN A 165.227.5.135
+www.digital-guard.org. 3600 IN A 165.227.5.135
+docs.digital-guard.org. 3600 IN A 165.227.5.135
+git-site.digital-guard.org. 3600 IN A 165.227.5.135
+lic.digital-guard.org. 3600 IN A 165.227.5.135
+digital-guard.org. 3600 IN A 165.227.5.135
+digital-guard.org. 1800 IN NS ns1.digitalocean.com.
+digital-guard.org. 1800 IN NS ns2.digitalocean.com.
+digital-guard.org. 1800 IN NS ns3.digitalocean.com.
+
+$ORIGIN itgs.org.br.
+$TTL 1800
+itgs.org.br. 3600 IN A 165.227.5.135
+docs.itgs.org.br. 3600 IN A 165.227.5.135
+www.itgs.org.br. 43200 IN CNAME itgs.org.br.
+itgs.org.br. 1800 IN NS ns1.digitalocean.com.
+itgs.org.br. 1800 IN NS ns2.digitalocean.com.
+itgs.org.br. 1800 IN NS ns3.digitalocean.com.
+
+$ORIGIN osm.codes.
+$TTL 1800
+ 3600 604800 1800
+osm.codes. 3600 IN A 165.227.5.135
+docs.osm.codes. 3600 IN A 165.227.5.135
+test.osm.codes. 3600 IN A 165.227.5.135
+old.osm.codes. 3600 IN A 165.227.5.135
+git-site.osm.codes. 3600 IN A 165.227.5.135
+www.osm.codes. 43200 IN CNAME osm.codes.
+olc.osm.codes. 43200 IN CNAME osm.codes.
+api.osm.codes. 43200 IN CNAME osm.codes.
+ghs.osm.codes. 43200 IN CNAME osm.codes.
+map.osm.codes. 43200 IN CNAME osm.codes.
+git.osm.codes. 43200 IN CNAME osm.codes.
+osm.codes. 1800 IN NS ns1.digitalocean.com.
+osm.codes. 1800 IN NS ns2.digitalocean.com.
+osm.codes. 1800 IN NS ns3.digitalocean.com.
+
+$ORIGIN addressforall.com.
+$TTL 1800
+addressforall.com. IN SOA ns1.digitalocean.com. hostmaster.addressforall.com. 1581680609 10800 3600 604800 1800
+addressforall.com. 3600 IN A 165.227.5.135
+addressforall.com. 1800 IN NS ns1.digitalocean.com.
+addressforall.com. 1800 IN NS ns2.digitalocean.com.
+addressforall.com. 1800 IN NS ns3.digitalocean.com.
+
