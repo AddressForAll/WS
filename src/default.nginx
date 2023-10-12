@@ -1,0 +1,68 @@
+#
+# ref. https://www.digitalocean.com/community/tutorials/how-to-install-linux-nginx-mysql-php-lemp-stack-in-ubuntu-16-04
+# ref2. https://stackoverflow.com/a/26668444/287948
+
+server {
+        #listen              80;
+        #listen              443 ssl;
+	#listen 80 default_server;
+	#listen [::]:80 default_server;
+        listen   80; ## listen for ipv4; this line is default and implied
+        listen   [::]:80 default_server ipv6only=on; ## listen for ipv6
+
+	root /var/www/html;
+
+	# Add index.php to the list if you are using PHP
+	index index.php index.html index.htm index.nginx-debian.html;
+
+	# server_name _;
+        server_name localhost;
+        # server_name server_domain_or_IP;
+
+	location / {
+		try_files $uri $uri/ =404;
+	}
+
+#    location ~ \.php$ {
+#        include snippets/fastcgi-php.conf;
+#        fastcgi_pass unix:/run/php/php8.0-fpm.sock;
+#    }
+
+	# pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+	#
+	#location ~ \.php$ {
+	#	include snippets/fastcgi-php.conf;
+	#
+	#	# With php7.0-cgi alone:
+	#	fastcgi_pass 127.0.0.1:9000;
+	#	# With php7.0-fpm:
+	#	fastcgi_pass unix:/run/php/php7.0-fpm.sock;
+	#}
+
+	# deny access to .htaccess files, if Apache's document root
+	# concurs with nginx's one
+	#
+	#location ~ /\.ht {
+	#	deny all;
+	#}
+}
+
+
+# Virtual Host configuration for example.com
+#
+# You can move that to a different file under sites-available/ and symlink that
+# to sites-enabled/ to enable it.
+#
+#server {
+#	listen 80;
+#	listen [::]:80;
+#
+#	server_name example.com;
+#
+#	root /var/www/example.com;
+#	index index.html;
+#
+#	location / {
+#		try_files $uri $uri/ =404;
+#	}
+#}

@@ -4,12 +4,19 @@
 
 server {
     server_name viz.addressforall.org;
-    listen              80;
+    #listen              80;
     listen              443 ssl;
     include /etc/nginx/ssl.conf;
     root /var/www/viz.addressforall.org/;
     index  index.php index.html index.htm;
     access_log /var/log/nginx/viz.addressforall.org.access_log;
+
+     #Segurança - https://observatory.mozilla.org/analyze/viz.addressforall.org
+     add_header Content-Security-Policy "default-src 'self'; script-src 'report-sample' 'self'; style-src 'report-sample' 'self'; object-src 'none'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-src 'self'; img-src 'self'; manifest-src 'self'; media-src 'self'; worker-src 'none'" always;
+     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+     add_header X-Content-Type-Options nosniff always;
+     add_header X-Frame-Options "SAMEORIGIN" always;
+     add_header X-XSS-Protection "1; mode=block" always;
 
     #location ~* "^\/([a-z0-9\-\/\.\_]+)$" {
     location / {
@@ -23,13 +30,20 @@ server {
 } # \server
 
 server {
-    listen              80;
+    #listen              80;
     listen              443 ssl;
     include /etc/nginx/ssl.conf;
     server_name docs.addressforall.org;
     # root /var/www/docs.addressforall.org/;
     # index  index.php index.html index.htm;
     access_log /var/log/nginx/docs.addressforall.org.access_log;
+
+     #Segurança - https://observatory.mozilla.org/analyze/docs.addressforall.org
+     add_header Content-Security-Policy "default-src 'self'; script-src 'report-sample' 'self'; style-src 'report-sample' 'self'; object-src 'none'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-src 'self'; img-src 'self'; manifest-src 'self'; media-src 'self'; worker-src 'none'" always;
+     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+     add_header X-Content-Type-Options nosniff always;
+     add_header X-Frame-Options "SAMEORIGIN" always;
+     add_header X-XSS-Protection "1; mode=block" always;
 
     # PAGES:
     # location / {
@@ -44,10 +58,18 @@ server {
 } # \server
 
 server {
-	listen              80;
+	#listen              80;
         listen              443 ssl;
         include /etc/nginx/ssl.conf;
         server_name tv.addressforall.org;
+
+        #Segurança - https://observatory.mozilla.org/analyze/tv.addressforall.org
+        add_header Content-Security-Policy "default-src 'self'; script-src 'report-sample' 'self'; style-src 'report-sample' 'self'; object-src 'none'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-src 'self'; img-src 'self'; manifest-src 'self'; media-src 'self'; worker-src 'none'" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+
         location ~ ^/?.+ {
                 rewrite
                   ^/?$
@@ -63,10 +85,16 @@ server {
 
 
 server {
-        listen              80;
+        #listen              80;
         listen              443 ssl;
         include /etc/nginx/ssl.conf;
         server_name blog.addressforall.org;
+        #Segurança - https://observatory.mozilla.org/analyze/blog.addressforall.org
+        add_header Content-Security-Policy "default-src 'self'; script-src 'report-sample' 'self'; style-src 'report-sample' 'self'; object-src 'none'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-src 'self'; img-src 'self'; manifest-src 'self'; media-src 'self'; worker-src 'none'" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-XSS-Protection "1; mode=block" always;
         location ~ ^/?.+ {
                 rewrite
                   ^/?$
@@ -82,13 +110,19 @@ server {
 
 
 server {
-	listen              80;
+	#listen              80;
         listen              443 ssl;
         include /etc/nginx/ssl.conf;
         server_name preserv.addressforall.org;
         root /var/www/preserv.addressforall.org/;
         index  index.php index.html index.htm;
         access_log /var/log/nginx/addressforall.org.access_log;
+        #Segurança - https://observatory.mozilla.org/analyze/preserv.addressforall.org
+        add_header Content-Security-Policy "default-src 'self'; script-src 'report-sample' 'self'; style-src 'report-sample' 'self'; object-src 'none'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-src 'self'; img-src 'self'; manifest-src 'self'; media-src 'self'; worker-src 'none'" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-XSS-Protection "1; mode=block" always;
 
     # JSON SQL & RPC:
     location /_sql.csv/ {
@@ -112,10 +146,16 @@ server {
 } # \server
 
 server {
-	listen              80;
+	#listen              80;
         listen              443 ssl;
         include /etc/nginx/ssl.conf;
         server_name git.addressforall.org;
+        #Segurança - https://observatory.mozilla.org/analyze/git.addressforall.org
+        add_header Content-Security-Policy "default-src 'self'; script-src 'report-sample' 'self'; style-src 'report-sample' 'self'; object-src 'none'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-src 'self'; img-src 'self'; manifest-src 'self'; media-src 'self'; worker-src 'none'" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-XSS-Protection "1; mode=block" always;
         location ~ ^/?.+ {
                 rewrite
                   ^/?licenses(/.*$|$)
@@ -130,10 +170,16 @@ server {
 } # \server
 
 server {
-	listen              80;
+	#listen              80;
         listen              443 ssl;
         include /etc/nginx/ssl.conf;
         server_name git-raw.addressforall.org;
+        #Segurança - https://observatory.mozilla.org/analyze/git-raw.addressforall.org
+        add_header Content-Security-Policy "default-src 'self'; script-src 'report-sample' 'self'; style-src 'report-sample' 'self'; object-src 'none'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-src 'self'; img-src 'self'; manifest-src 'self'; media-src 'self'; worker-src 'none'" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-XSS-Protection "1; mode=block" always;
         location ~ ^/?.+ {
                 rewrite
                   ^/?licenses(/.*$|$)
@@ -149,13 +195,19 @@ server {
 
 # API! https
 server {
-    listen              80;
+    #listen              80;
     listen              443 ssl;
     include /etc/nginx/ssl.conf;
     server_name api.addressforall.org;
     access_log /var/log/nginx/https_api.addressforall.org.access_log;
     root /var/www/addressforall.org/;
     index  index.php index.html index.htm;
+    #Segurança - https://observatory.mozilla.org/analyze/api.addressforall.org
+    add_header Content-Security-Policy "default-src 'self'; script-src 'report-sample' 'self'; style-src 'report-sample' 'self'; object-src 'none'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-src 'self'; img-src 'self'; manifest-src 'self'; media-src 'self'; worker-src 'none'" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
 
     # JSON SQL & RPC:
     location /_sql.csv/ {
@@ -199,13 +251,19 @@ server {
 } # \server
 
 server {
-    listen              80;
+    #listen              80;
     listen              443 ssl;
     include /etc/nginx/ssl.conf;
     server_name api-test.addressforall.org;
     access_log /var/log/nginx/addressforall.org.access_log;
     root /var/www/addressforall.org/;
     index  index.php index.html index.htm;
+    #Segurança - https://observatory.mozilla.org/analyze/api-test.addressforall.org
+    add_header Content-Security-Policy "default-src 'self'; script-src 'report-sample' 'self'; style-src 'report-sample' 'self'; object-src 'none'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-src 'self'; img-src 'self'; manifest-src 'self'; media-src 'self'; worker-src 'none'" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
 
     # ROOT, somente json:
     location = / {
@@ -244,13 +302,20 @@ server {
 } # \server
 
 server {
-	listen              80;
+	#listen              80;
         listen              443 ssl;
         include /etc/nginx/ssl.conf;
         server_name api-htm.addressforall.org;
         access_log /var/log/nginx/addressforall.org.access_log;
         root /var/www/addressforall.org/;
         index  index.php index.html index.htm;
+
+    #Segurança - https://observatory.mozilla.org/analyze/api-htm.addressforall.org
+    add_header Content-Security-Policy "default-src 'self'; script-src 'report-sample' 'self'; style-src 'report-sample' 'self'; object-src 'none'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-src 'self'; img-src 'self'; manifest-src 'self'; media-src 'self'; worker-src 'none'" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
 
     location / {
       try_files $uri $uri/  /index.php?uri=$uri;
@@ -265,13 +330,20 @@ server {
 
 
 server {
-        listen              80;
+        #listen              80;
         listen              443 ssl;
         include /etc/nginx/ssl.conf;
         server_name local.addressforall.org;
         access_log /var/log/nginx/addressforall.org.access_log;
         root /var/www/local.addressforall.org/;
         index  index.php index.html index.htm;
+
+    #Segurança - https://observatory.mozilla.org/analyze/local.addressforall.org
+    #add_header Content-Security-Policy "default-src 'self'; script-src 'report-sample' 'self'; style-src 'report-sample' 'self'; object-src 'none'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-src 'self'; img-src 'self'; manifest-src 'self'; media-src 'self'; worker-src 'none'" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
 
     location / {
       try_files $uri $uri/  /index.php?uri=$uri;
@@ -288,7 +360,7 @@ server {
 #https://www.mediawiki.org/wiki/Manual:Short_URL/Nginx
 server {
 
-     listen              80;
+     #listen              80;
      listen              443 ssl;
      include /etc/nginx/ssl.conf;
      server_name wiki.addressforall.org;
@@ -300,9 +372,12 @@ server {
      client_body_timeout 60;
      client_max_body_size 100M;
 
-    #Segurança - https://observatory.mozilla.org/analyze/addressforall.org
-    #https://content-security-policy.com/
-    #add_header Content-Security-Policy "default-src 'none'; script-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; base-uri 'self'; form-action 'self'; frame-src 'self' www.youtube.com;" always;
+    #Segurança - https://observatory.mozilla.org/analyze/wiki.addressforall.org
+    add_header Content-Security-Policy "default-src 'self'; script-src 'unsafe-eval' 'unsafe-inline' 'report-sample' 'self'; style-src 'unsafe-inline' 'report-sample' 'self'; object-src 'none'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-src 'self'; img-src https: data: 'self'; manifest-src 'self'; media-src 'self'; worker-src 'none'" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
 
 
     location ~ ^/w/(index|load|api|thumb|opensearch_desc|rest|img_auth)\.php$ {
@@ -349,7 +424,7 @@ server {
 } # \server
 
 server {
-     listen              80;
+     #listen              80;
      listen              443 ssl;
      include /etc/nginx/ssl.conf;
      server_name addressforall.org addressforall.com www.addressforall.org;
@@ -358,9 +433,12 @@ server {
      root /var/www/addressforall.org/site-v2/out/;
      index  index.php index.html index.htm;
 
-    #Segurança - https://observatory.mozilla.org/analyze/addressforall.org
-    #https://content-security-policy.com/
-    #add_header Content-Security-Policy "default-src 'none'; script-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; base-uri 'self'; form-action 'self'; frame-src 'self' www.youtube.com;" always;
+     #Segurança - https://observatory.mozilla.org/analyze/addressforall.org
+     add_header Content-Security-Policy "default-src 'self' 'unsafe-inline' https: nonce; script-src 'report-sample' 'self' https: 'unsafe-inline' ; style-src 'report-sample' 'self' https:; object-src 'none'; base-uri 'self'; connect-src 'self' https: https://raw.githubusercontent.com ; font-src 'self'; frame-src 'self' https://www.youtube.com; img-src data: https: 'self' https://i.ytimg.com; manifest-src 'self'; media-src 'self'; worker-src 'none'" always;
+     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+     add_header X-Content-Type-Options nosniff always;
+     add_header X-Frame-Options "SAMEORIGIN" always;
+     add_header X-XSS-Protection "1; mode=block" always;
 
      #regras de rewrite para estatuto - 20230111 - Carlos
      rewrite "^/urn:lex::estatuto:2020-04-03$" "/_private/A4A-Estatuto2020-04-03.htm";
@@ -399,6 +477,9 @@ server {
     location /_private {
       alias /var/www/addressforall.org/_private;
     }
+    location /_official {
+      alias /var/www/addressforall.org/_official;
+    }
     location /viz {
       alias /var/www/addressforall.org/viz;
     }
@@ -406,7 +487,7 @@ server {
 } # \server
 
 server {
-        listen              80;
+        #listen              80;
         listen              443 ssl;
         server_name teste.addressforall.org;
         access_log /var/log/nginx/teste.addressforall.org.access_log;
@@ -428,7 +509,7 @@ server {
 } # \server
 
 server {
-        listen              80;
+        #listen              80;
         listen              443 ssl;
         server_name teste2.addressforall.org;
         access_log /var/log/nginx/teste2.addressforall.org.access_log;
@@ -446,7 +527,7 @@ server {
 
 
 server {
-	listen              80;
+	#listen              80;
         listen              443 ssl;
         include /etc/nginx/ssl.conf;
         server_name osms.addressforall.org;

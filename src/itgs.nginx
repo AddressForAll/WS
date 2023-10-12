@@ -1,0 +1,29 @@
+##
+# Servidores ITGS.ORG.BR
+##
+
+server {
+    listen 443 ssl;
+    include /etc/nginx/ssl.conf;
+    server_name docs.itgs.org.br www.docs.itgs.org.br;
+    access_log /var/log/nginx/docs.itgs.org.br.access_log;
+    return 301 https://wiki.addressforall.org/doc/P%C3%A1gina_principal;
+} # \server
+
+server {
+    listen 443 ssl;
+    include /etc/nginx/ssl.conf;
+    server_name itgs.org.br www.itgs.org.br;
+    root /var/www/itgs.org.br/;
+    index  index.php index.html index.htm;
+    access_log /var/log/nginx/itgs.org.br.access_log;
+
+    # PAGES:
+    location / {
+      try_files $uri $uri/  /index.php?uri=$uri;
+    }
+    location ~ \.php$ {
+          include snippets/fastcgi-php.conf;
+          fastcgi_pass unix:/run/php/php-fpm.sock;
+    }
+} # \server
