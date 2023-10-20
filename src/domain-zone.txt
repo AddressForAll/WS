@@ -19,6 +19,62 @@ viz.addressforall.org. 3600 IN A 165.227.5.135
 blog.addressforall.org. 3600 IN A 165.227.5.135
 git-site.addressforall.org. 3600 IN A 165.227.5.135
 flow.addressforall.org. 3600 IN A 165.227.5.135
+
+www.api-csv.addressforall.org. 3600 IN A 165.227.5.135
+www.api-htm.addressforall.org. 3600 IN A 165.227.5.135
+www.api-test.addressforall.org. 3600 IN A 165.227.5.135
+www.api.addressforall.org. 3600 IN A 165.227.5.135
+www.blog.addressforall.org. 3600 IN A 165.227.5.135
+www.docs.addressforall.org. 3600 IN A 165.227.5.135
+www.flow.addressforall.org. 3600 IN A 165.227.5.135
+www.git-raw.addressforall.org. 3600 IN A 165.227.5.135
+www.git.addressforall.org. 3600 IN A 165.227.5.135
+www.local.addressforall.org. 3600 IN A 165.227.5.135
+www.osms.addressforall.org. 3600 IN A 165.227.5.135
+www.preserv.addressforall.org. 3600 IN A 165.227.5.135
+www.teste.addressforall.org. 3600 IN A 165.227.5.135
+www.teste2.addressforall.org. 3600 IN A 165.227.5.135
+www.tv.addressforall.org. 3600 IN A 165.227.5.135
+www.viz.addressforall.org. 3600 IN A 165.227.5.135
+www.wiki.addressforall.org. 3600 IN A 165.227.5.135
+
+addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+api-csv.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+api-test.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+api.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+blog.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+docs.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+flow.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+git-raw.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+git-site.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+git.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+local.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+osms.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+preserv.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+teste.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+teste2.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+tv.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+viz.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+wiki.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.api-csv.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.api-htm.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.api-test.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.api.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.blog.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.docs.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.flow.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.git-raw.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.git.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.local.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.osms.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.preserv.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.teste.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.teste2.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.tv.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.viz.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.wiki.addressforall.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+
 addressforall.org. 1800 IN NS ns1.digitalocean.com.
 addressforall.org. 1800 IN NS ns2.digitalocean.com.
 addressforall.org. 1800 IN NS ns3.digitalocean.com.
@@ -33,6 +89,49 @@ www.afa.codes. 3600 IN A 165.227.5.135
 docs.afa.codes. 3600 IN A 165.227.5.135
 git-site.afa.codes. 3600 IN A 165.227.5.135
 git-raw.afa.codes. 3600 IN A 165.227.5.135
+
+api-csv.afa.codes. 3600 IN A 165.227.5.135
+ghs.afa.codes. 3600 IN A 165.227.5.135
+map.osm.codes. 3600 IN A 165.227.5.135
+olc.afa.codes. 3600 IN A 165.227.5.135
+old.afa.codes. 3600 IN A 165.227.5.135
+www.api-csv.afa.codes. 3600 IN A 165.227.5.135
+www.api.afa.codes. 3600 IN A 165.227.5.135
+www.docs.afa.codes. 3600 IN A 165.227.5.135
+www.ghs.afa.codes. 3600 IN A 165.227.5.135
+www.git-raw.afa.codes. 3600 IN A 165.227.5.135
+www.git-site.afa.codes. 3600 IN A 165.227.5.135
+www.git.afa.codes. 3600 IN A 165.227.5.135
+www.map.osm.codes. 3600 IN A 165.227.5.135
+www.olc.afa.codes. 3600 IN A 165.227.5.135
+www.old.afa.codes. 3600 IN A 165.227.5.135
+www.test.afa.codes. 3600 IN A 165.227.5.135
+
+afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+api-csv.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+api.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+docs.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+ghs.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+git-raw.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+git-site.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+git.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+map.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+olc.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+old.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+test.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.api-csv.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.api.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.docs.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.ghs.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.git-raw.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.git-site.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.git.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.map.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.olc.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.old.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.test.afa.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+
 afa.codes. 1800 IN NS ns1.digitalocean.com.
 afa.codes. 1800 IN NS ns2.digitalocean.com.
 afa.codes. 1800 IN NS ns3.digitalocean.com.
@@ -47,6 +146,29 @@ docs.digital-guard.org. 3600 IN A 165.227.5.135
 git-site.digital-guard.org. 3600 IN A 165.227.5.135
 lic.digital-guard.org. 3600 IN A 165.227.5.135
 digital-guard.org. 3600 IN A 165.227.5.135
+
+www.dl.digital-guard.org. 3600 IN A 165.227.5.135
+www.docs.digital-guard.org. 3600 IN A 165.227.5.135
+www.git-raw.digital-guard.org. 3600 IN A 165.227.5.135
+www.git-site.digital-guard.org. 3600 IN A 165.227.5.135
+www.git.digital-guard.org. 3600 IN A 165.227.5.135
+www.lic.digital-guard.org. 3600 IN A 165.227.5.135
+
+digital-guard.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+dl.digital-guard.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+docs.digital-guard.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+git-raw.digital-guard.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+git-site.digital-guard.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+git.digital-guard.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+lic.digital-guard.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.digital-guard.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.dl.digital-guard.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.docs.digital-guard.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.git-raw.digital-guard.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.git-site.digital-guard.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.git.digital-guard.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.lic.digital-guard.org. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+
 digital-guard.org. 1800 IN NS ns1.digitalocean.com.
 digital-guard.org. 1800 IN NS ns2.digitalocean.com.
 digital-guard.org. 1800 IN NS ns3.digitalocean.com.
@@ -56,6 +178,13 @@ $TTL 1800
 itgs.org.br. 3600 IN A 165.227.5.135
 docs.itgs.org.br. 3600 IN A 165.227.5.135
 www.itgs.org.br. 43200 IN CNAME itgs.org.br.
+
+www.docs.itgs.org.br. 3600 IN A 165.227.5.135
+docs.itgs.org.br. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+itgs.org.br. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.docs.itgs.org.br. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.itgs.org.br. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+
 itgs.org.br. 1800 IN NS ns1.digitalocean.com.
 itgs.org.br. 1800 IN NS ns2.digitalocean.com.
 itgs.org.br. 1800 IN NS ns3.digitalocean.com.
@@ -74,6 +203,45 @@ api.osm.codes. 43200 IN CNAME osm.codes.
 ghs.osm.codes. 43200 IN CNAME osm.codes.
 map.osm.codes. 43200 IN CNAME osm.codes.
 git.osm.codes. 43200 IN CNAME osm.codes.
+
+api-csv.osm.codes. 3600 IN A 165.227.5.135
+git-raw.osm.codes. 3600 IN A 165.227.5.135
+www.api-csv.osm.codes. 3600 IN A 165.227.5.135
+www.api.osm.codes. 3600 IN A 165.227.5.135
+www.docs.osm.codes. 3600 IN A 165.227.5.135
+www.ghs.osm.codes. 3600 IN A 165.227.5.135
+www.git-raw.osm.codes. 3600 IN A 165.227.5.135
+www.git-site.osm.codes. 3600 IN A 165.227.5.135
+www.git.osm.codes. 3600 IN A 165.227.5.135
+www.map.osm.codes. 3600 IN A 165.227.5.135
+www.olc.osm.codes. 3600 IN A 165.227.5.135
+www.old.osm.codes. 3600 IN A 165.227.5.135
+www.test.osm.codes. 3600 IN A 165.227.5.135
+api-csv.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+api.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+docs.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+ghs.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+git-raw.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+git-site.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+git.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+map.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+olc.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+old.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+test.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.api-csv.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.api.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.docs.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.ghs.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.git-raw.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.git-site.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.git.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.map.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.olc.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.old.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.test.osm.codes. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+
 osm.codes. 1800 IN NS ns1.digitalocean.com.
 osm.codes. 1800 IN NS ns2.digitalocean.com.
 osm.codes. 1800 IN NS ns3.digitalocean.com.
@@ -82,6 +250,11 @@ $ORIGIN addressforall.com.
 $TTL 1800
 addressforall.com. IN SOA ns1.digitalocean.com. hostmaster.addressforall.com. 1581680609 10800 3600 604800 1800
 addressforall.com. 3600 IN A 165.227.5.135
+
+www.addressforall.com. 3600 IN A 165.227.5.135
+addressforall.com. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+www.addressforall.com. 3600 IN AAAA 2604:a880:2:d0::b76:1001
+
 addressforall.com. 1800 IN NS ns1.digitalocean.com.
 addressforall.com. 1800 IN NS ns2.digitalocean.com.
 addressforall.com. 1800 IN NS ns3.digitalocean.com.
