@@ -11,15 +11,6 @@ pg_io    =/tmp/pg_io
 pg_uri   =postgres://postgres@localhost
 iniExts  ="CREATE EXTENSION IF NOT EXISTS hstore; CREATE EXTENSION IF NOT EXISTS postgis;"
 
-sites_domains = addressforall.com addressforall.org afa.codes blog.addressforall.org dl.digital-guard.org \
-	local.addressforall.org osm.codes preserv.addressforall.org preserv.addressforall.org test.afa.codes \
-	test.osm.codes teste2.addressforall.org wiki.addressforall.org/doc/P%C3%A1gina_principal \
-	www.addressforall.org www.itgs.org.br \
-	blog.addressforall.org docs.addressforall.org docs.digital-guard.org docs.osm.codes git.addressforall.org \
-	git.afa.codes git.digital-guard.org git.osm.codes old.osm.codes osms.addressforall.org tv.addressforall.org \
-	tv.addressforall.org
-sites_protocols =  https 
-sites_return_code = 200|301|302
 
 ## -- -- Functions a revisar -- --
 ## pode ser INCLUDE!
@@ -199,15 +190,41 @@ status_disk_abuse:
 	@echo "... if no line, it is ok!"
 
 status_sites:
-	@for site in $(sites_domains); do \
-		for protocol in $(sites_protocols) ; do \
-			res=`curl -o /dev/null -s -w "%{http_code}\n" $$protocol://$$site `; \
-			echo $$res echo | egrep -q "$(sites_return_code)" ; \
-			if [ $$? -ne 0 ] ; then \
-				>&2 echo Erro $$res no site $$protocol://$$site; \
-			fi ; \
-		done ; \
-	done
+	@curl https://raw.githubusercontent.com/AddressForAll/WS/master/src/domain-zone.txt | egrep 'IN A|IN CNAME' \
+        | while read line; do \
+                d=$$(echo $$line | cut -d' ' -f1) ; \
+                t=$$(echo $$line | cut -d' ' -f4) ; \
+                a=$$(echo $$line | cut -d' ' -f5) ; \
+		echo $d ; \
+                if [ $$t = "CNAME" ] ; then \
+                        m=$$( host $$a | cut -d' ' -f2 ); \
+                        if [ $$m = "mail" ] ; then \
+                                echo DOMINIO NÃO TEM A: $$d ; \
+                                t=mail ; \
+                        else \
+                                a=$$( host $$a | cut -d' ' -f4 ) ; \
+                        fi ; \
+                fi ; \
+                if [ $$t = "A" -o $$t = "AAAA" -o $$t = "CNAME" ] ; then \
+                        if [ $$a = "165.227.5.135" -o $$a = "2604:a880:2:d0::b76:1001" ] ; then \
+                                http=$$(curl -o /dev/null -s -w "%{http_code}\n" "http://$$d" ); \
+                                https=$$(curl -o /dev/null -s -w "%{http_code}\n" "https://$$d" ); \
+                                if  [ $$http = "200" -o $$http = "300" -o $$http = "301" -o $$http = "302" ] && \
+                                   [ $$https = "200" -o $$https = "300" -o $$https = "301" -o $$https = "302" ] ; then \
+                                        echo SITE OK: $$d ; \
+                                elif [ $$http = "000" -a $$https = "000" ] ; then \
+                                        echo DOMINIO NÃO REGISTRADO  $$http,$$https: $$d ; \
+                                elif [ $$http = "000" -o $$https = "000" ] ; then \
+                                        echo DOMINIO NÃO CONFIGURADO  $$http,$$https: $$d ; \
+                                else \
+                                        echo SITE PROBLEMA $$http,$$https: $$d ; \
+                                fi ; \
+                        else \
+                                echo DOMINIO EM OUTRO SERVIDOR: $$d - $$a ; \
+                        fi ; \
+                fi ; \
+        done
+
 
 # # #
 dir_ini:
