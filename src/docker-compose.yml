@@ -4,7 +4,6 @@ volumes:
     driver: local
 services:
   pg09:
-    #image: jonixis/postgres-madlib:latest
     image: madlib-a4a
     container_name: postgres-madlib
     ports:
@@ -21,7 +20,9 @@ services:
       - PGRST_DB_URI=postgres://postgres@localhost/dl05s_main
       - PGRST_DB_ANON_ROLE=postgres
       - PGRST_DB_SCHEMA=api
+      - PGRST_SERVER_HOST=localhost
       - PGRST_SERVER_PORT=3105
+      - PGRST_OPENAPI_SERVER_PROXY_URI=https://api.afa.codes
   pgrestDL06:
     image: postgrest/postgrest:latest
     restart: unless-stopped
@@ -31,4 +32,6 @@ services:
       - PGRST_DB_URI=postgres://postgres@localhost/dl06t_main
       - PGRST_DB_ANON_ROLE=postgres
       - PGRST_DB_SCHEMA=api
+      - PGRST_SERVER_HOST=localhost
       - PGRST_SERVER_PORT=3106
+      - PGRST_OPENAPI_SERVER_PROXY_URI=https://api.test.afa.codes
