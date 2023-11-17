@@ -18,7 +18,7 @@ services:
     environment:
       - RACK_ENV=production
       - PGRST_DB_URI=postgres://postgres@localhost/dl05s_main
-      - PGRST_DB_ANON_ROLE=postgres
+      - PGRST_DB_ANON_ROLE=webanon
       - PGRST_DB_SCHEMA=api
       - PGRST_SERVER_HOST=localhost
       - PGRST_SERVER_PORT=3105
@@ -30,7 +30,7 @@ services:
     environment:
       - RACK_ENV=development
       - PGRST_DB_URI=postgres://postgres@localhost/dl06t_main
-      - PGRST_DB_ANON_ROLE=postgres
+      - PGRST_DB_ANON_ROLE=webanon
       - PGRST_DB_SCHEMA=api
       - PGRST_SERVER_HOST=localhost
       - PGRST_SERVER_PORT=3106
