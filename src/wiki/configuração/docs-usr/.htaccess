@@ -1,0 +1,7 @@
+RewriteEngine On
+
+# main rewrite rule
+RewriteRule ^/?doc(/.*)?$ %{DOCUMENT_ROOT}/w/index.php [L]
+
+# Redirect / to Main Page
+RewriteRule ^/*$ %{DOCUMENT_ROOT}/w/index.php [L]
