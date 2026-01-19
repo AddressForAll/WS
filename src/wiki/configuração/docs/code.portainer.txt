@@ -1,0 +1,138 @@
+# Wiki stack
+#
+# Env:
+# WEBSERVER_FQDN
+# WIKI_USER
+# WIKI_PASSWORD
+
+version: '3.8'
+
+configs:
+  prompt_bashrc:
+    name: prompt_bashrc
+    external: true
+  sshd_config:
+    name: sshd_config_v2
+    external: true
+  sshd_pam:
+    name: sshd_pam_v1
+    external: true
+  wiki-passwd:
+    name: wiki-passwd
+    external: true
+
+services:
+
+  server:
+    #image: marcelofmatos/mediawiki:1.27
+    #image: mediawiki:stable
+    image: dockerhub.example.org/itgs/wiki:main
+    environment:
+      MEDIAWIKI_SERVER: https://wiki.example.org
+      MEDIAWIKI_SITENAME: "WIKI_SITENAME"
+      MEDIAWIKI_DB_TYPE: mysql
+      MEDIAWIKI_DB_HOST: database
+      MEDIAWIKI_DB_NAME: db_name
+      MEDIAWIKI_DB_USER: db_user
+      MEDIAWIKI_DB_PASSWORD: DB_PASSWORD_PLACEHOLDER
+      MEDIAWIKI_LANGUAGE_CODE: pt-BR
+      MEDIAWIKI_DEBUG: 1
+      WIKI_USER: admin_user
+      WIKI_PASSWORD: ADMIN_PASSWORD_PLACEHOLDER
+      TZ: America/Sao_Paulo
+    volumes:
+      #- www:/var/www/mediawiki
+      - www:/var/www/html
+      - home:/home
+      - etc-php:/usr/local/etc/php/
+      - etc-apache:/etc/apache2/sites-enabled/
+    networks:
+      - default
+      - web
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+         constraints:
+          - node.labels.app == true
+      labels:
+        - traefik.enable=true
+        - traefik.http.services.custom.loadbalancer.server.port=80
+        - traefik.http.routers.custom.entrypoints=websecure
+        - traefik.http.routers.custom.tls.certresolver=myresolver
+        - traefik.http.routers.custom.rule=Host(`wiki.example.org`)
+
+  ssh:
+    #image: biosludge/sshd:latest
+    image: dockerhub.example.org/itgs/wiki:sshd
+    cap_add:
+      - NET_ADMIN
+    command: "wiki:SSH_PASSWORD_PLACEHOLDER:1000:33"
+    #entrypoint: "tail -f /etc/hosts"
+    hostname: wiki.example.org
+    environment:
+      WEBSERVER_FQDN: wiki.example.org
+      SSH_PASSWORD: SSH_PASSWORD_PLACEHOLDER
+    #working_dir: /var/www/html
+    configs:
+      - source: sshd_config
+        target: /etc/ssh/sshd_config.d/custom.conf
+
+
+    volumes:
+      - www:/var/www/html
+      - home:/home
+      - var-spool-cron:/var/spool/cron
+      - root:/root
+      - tailscale:/var/lib/tailscale/
+    ports:
+      - 2231:22
+    deploy:
+      mode: replicated
+      #restart_policy:
+      #  condition: none
+      replicas: 1
+      placement:
+         constraints:
+          - node.labels.app == true
+      
+  database:
+    image: mariadb:10.3
+    environment:
+      MYSQL_DATABASE: db_name
+      MYSQL_USER: db_user
+      MYSQL_PASSWORD: DB_PASSWORD_PLACEHOLDER
+      MYSQL_ROOT_PASSWORD: ROOT_PASSWORD_PLACEHOLDER
+      TZ: America/Sao_Paulo
+    volumes:
+      - mysql-data:/var/lib/mysql
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+         constraints:
+          - node.labels.database == true
+      
+networks:
+  web: # proxy net
+    external: true
+    name: proxy
+
+
+volumes:
+  etc-apache:
+    driver: local
+  etc-php:
+    driver: local
+  tailscale:
+    driver: local
+  root:
+    driver: local
+  www:
+    driver: local
+  home:
+    driver: local
+  var-spool-cron:
+    driver: local
+  mysql-data:
+    driver: local
