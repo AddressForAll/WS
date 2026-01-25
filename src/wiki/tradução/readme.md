@@ -90,4 +90,21 @@ mw.hook('wikipage.content').add(function () {
     }
 });
 
+- LocalSettings.php
+
 ```
+// Pega a URL e remove parâmetros após a '?'
+$requestUri = explode('?', $_SERVER['REQUEST_URI'])[0];
+
+if (preg_match('#/(pt|pt-br)$#i', $requestUri) || strpos($requestUri, '/pt/') !== false) {
+    $wgLanguageCode = "pt-br";
+} elseif (preg_match('#/es$#i', $requestUri) || strpos($requestUri, '/es/') !== false) {
+    $wgLanguageCode = "es";
+} else {
+    $wgLanguageCode = "en";
+}
+
+// Força a interface a seguir o código acima, ignorando o cache de idioma do navegadorr
+$wgHiddenPrefs[] = 'language';
+```
+
