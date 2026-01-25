@@ -90,6 +90,8 @@ mw.hook('wikipage.content').add(function () {
     }
 });
 
+```
+
 - LocalSettings.php
 
 ```
